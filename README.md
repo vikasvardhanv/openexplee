@@ -11,6 +11,10 @@
 
 ---
 
+![OpenExplee Product Walkthrough](media/openexplee_demo.gif)
+
+---
+
 ## Why OpenExplee?
 
 Commercial outbound platforms like Explee, Apollo, and Instantly charge **$100 to $300+/month** for bundled lead databases and sending pools. Under the hood, these tools simply chain web scrapers, DNS/SMTP checks, LLMs, and email dispatchers.
@@ -151,3 +155,4 @@ Contributions are welcome! Feel free to submit issues or pull requests:
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
+

@@ -126,3 +126,4 @@ Respond in valid JSON with exactly two fields:
     )
 
     return {"subject": subject, "body": body}
+

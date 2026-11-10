@@ -102,3 +102,4 @@ async def get_db_connection() -> aiosqlite.Connection:
     conn.row_factory = aiosqlite.Row
     await conn.execute("PRAGMA foreign_keys=ON;")
     return conn
+

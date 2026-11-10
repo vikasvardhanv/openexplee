@@ -100,3 +100,4 @@ async def delete_lead(lead_id: int):
     await conn.commit()
     await conn.close()
     return {"ok": True}
+

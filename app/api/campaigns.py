@@ -139,3 +139,4 @@ async def delete_campaign(campaign_id: int):
     await conn.commit()
     await conn.close()
     return {"ok": True}
+

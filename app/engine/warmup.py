@@ -90,3 +90,4 @@ async def simulate_warmup_tick(inbox_id: int) -> Dict[str, Any]:
         await conn.close()
 
     return {"inbox_email": email, "action": "warmup_exchange", "status": "completed", "health_score": new_health}
+

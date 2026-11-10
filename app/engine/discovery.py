@@ -130,3 +130,4 @@ async def discover_leads_for_icp(icp_prompt: str, max_companies: int = 10) -> Li
         })
 
     return discovered_leads
+

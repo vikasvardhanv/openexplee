@@ -98,3 +98,4 @@ async def scrape_company_website(url: str, max_depth: int = 1) -> Dict[str, Any]
 
     intel["found_emails"] = list(intel["found_emails"])
     return intel
+

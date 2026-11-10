@@ -71,3 +71,4 @@ Tells recipient servers how to handle emails failing SPF/DKIM.
 2. Enter your secondary domain in the **Domain Deliverability Firewall** box.
 3. Click **Audit Records**.
 4. OpenExplee queries the live DNS servers to ensure MX, SPF, and DMARC are all marked **Active** before you send your first cold email.
+

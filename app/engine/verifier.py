@@ -148,3 +148,4 @@ async def verify_email_smtp(email: str, timeout: float = 6.0) -> Dict[str, Any]:
         result["details"] = f"MX verified ({primary_mx}). Direct SMTP check skipped ({type(e).__name__})."
 
     return result
+

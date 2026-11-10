@@ -40,3 +40,4 @@ async def get_dashboard_stats():
         "active_inboxes": active_inboxes,
         "avg_health_score": avg_health
     }
+

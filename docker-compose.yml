@@ -23,3 +23,4 @@ services:
 
 volumes:
   openexplee_data:
+

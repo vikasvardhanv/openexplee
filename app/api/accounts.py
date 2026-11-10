@@ -122,3 +122,4 @@ async def delete_inbox(inbox_id: int):
     await conn.commit()
     await conn.close()
     return {"ok": True}
+

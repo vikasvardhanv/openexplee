@@ -151,3 +151,4 @@ async def dispatch_campaign_batch(campaign_id: int, limit: int = 10) -> Dict[str
             errors.append(f"Failed to send to {lead['email']}: {send_res.get('error')}")
 
     return {"dispatched": dispatched, "errors": errors}
+

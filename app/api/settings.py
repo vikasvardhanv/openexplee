@@ -63,3 +63,4 @@ async def update_settings(req: SettingsUpdate):
         settings.max_daily_sends_per_inbox = req.max_daily_sends_per_inbox
 
     return {"ok": True, "provider": settings.default_llm_provider}
+

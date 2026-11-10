@@ -59,3 +59,4 @@ To send 300 emails/day safely:
 * **DO NOT:** Send 300 emails from 1 inbox.
 * **DO:** Connect 8–10 inboxes across 2–3 secondary domains, capped at 30–35 emails/day each.
 OpenExplee automatically rotates across your inboxes using a round-robin scheduler with randomized time delays.
+
