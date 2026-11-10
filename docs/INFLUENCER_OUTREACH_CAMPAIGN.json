@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Marc Lou",
+    "handle": "@marc_louvion",
+    "platform": "X / Twitter",
+    "angle": "Unbundling expensive SaaS for bootstrappers",
+    "dm": "Hey Marc — big fan of your build-in-public journey with ShipFast.\n\nYou often talk about how founders bleed cash on monthly SaaS subscriptions. We just built and open-sourced OpenExplee to completely eliminate the $200–$300/mo bill people pay Explee & Apollo for basic web scraping and cold email.\n\n1-command Docker setup, natural language ICP search, live SMTP handshake verification ($0), and AI personalization via Gemini/Ollama.\n\nCode is free under MIT: https://github.com/vikasvardhanv/openexplee\n\nThought your indie founder community would love saving $2,400/yr. Keep crushing it!"
+  },
+  {
+    "name": "Greg Isenberg",
+    "handle": "@gregisenberg",
+    "platform": "X / Twitter",
+    "angle": "Unbundling SaaS into open-source cash engines",
+    "dm": "Hey Greg — love your frameworks on unbundling SaaS into open-source opportunities.\n\nWe saw founders paying $300/month for Explee/Apollo/Instantly just to scrape websites and send emails, so we built the open-source counterpart: OpenExplee.\n\nIt does natural language ICP search, 4-tier live mailbox verification, and multi-inbox rotation with local LLM support.\n\nJust dropped the repo on GitHub: https://github.com/vikasvardhanv/openexplee\n\nWould love your quick thoughts if this fits the unbundling playbook!"
+  },
+  {
+    "name": "Logan Kilpatrick",
+    "handle": "@OfficialLoganK",
+    "platform": "X / Twitter",
+    "angle": "Google Gemini 2.5 Flash as the backbone",
+    "dm": "Hey Logan — hope you're doing well! Saw your updates on Gemini developer tooling.\n\nWe just open-sourced OpenExplee (an MIT alternative to $300/mo B2B outbound SaaS like Explee) and built it with Google Gemini 2.5 Flash as the primary default engine for web research and personalization.\n\nIt runs at pennies compared to legacy outbound software.\n\nRepo is here: https://github.com/vikasvardhanv/openexplee\n\nWould love to hear what you think of the architecture!"
+  },
+  {
+    "name": "Yohei Nakajima",
+    "handle": "@yoheinakajima",
+    "platform": "X / Twitter",
+    "angle": "Autonomous agents for lead generation",
+    "dm": "Hey Yohei — loved your BabyAGI work and untangling autonomous workflows.\n\nWe built an open-source autonomous agent called OpenExplee that takes a natural language ICP description, crawls target company sites, verifies emails via live SMTP handshakes, and drafts custom outreach.\n\nZero monthly subscription, 100% self-hosted: https://github.com/vikasvardhanv/openexplee\n\nWould love your critique on the pipeline!"
+  },
+  {
+    "name": "Rowan Cheung",
+    "handle": "@rowancheung",
+    "platform": "The Rundown AI / X",
+    "angle": "Open-source tool of the day feature",
+    "dm": "Hey Rowan — read The Rundown every morning. Incredible coverage.\n\nSubmitting a new MIT open-source project for your daily tool roundup: OpenExplee (https://github.com/vikasvardhanv/openexplee).\n\nIt's a free, self-hosted replacement for $300/mo outbound tools like Explee and Apollo. Uses Gemini / local Ollama to find B2B leads, verify mailboxes, and automate outreach with multi-inbox rotation. Clean Docker setup.\n\nHope it's useful for your readers!"
+  },
+  {
+    "name": "Matt Shumer",
+    "handle": "@mattshumer_",
+    "platform": "X / Twitter",
+    "angle": "AI engineering and developer tools",
+    "dm": "Hey Matt — huge fan of HyperWrite and your LLM experiments.\n\nGot frustrated by how much Apollo and Explee charge founders for simple LLM chains and DNS lookups, so we built OpenExplee: https://github.com/vikasvardhanv/openexplee\n\nSelf-hosted, Dockerized, with live SMTP handshakes and local Ollama/Gemini integration.\n\nThought you might appreciate the open-source tear-down of the $300/mo sales SaaS model!"
+  },
+  {
+    "name": "Alex Berman",
+    "handle": "@alxberman",
+    "platform": "X / YouTube",
+    "angle": "Cold email teardown and deliverability",
+    "dm": "Hey Alex — watched your cold email case studies for years.\n\nMost cold email SaaS platforms charge $100–$300/mo and lock users into shared sending pools that ruin deliverability. We just open-sourced OpenExplee (https://github.com/vikasvardhanv/openexplee).\n\nIt enforces a secondary domain firewall (SPF/DKIM/DMARC auditor), free 4-tier SMTP mailbox verification, and multi-inbox rotation across Google Workspace / M365.\n\nWould love your perspective on how we set up the deliverability guardrails!"
+  },
+  {
+    "name": "Swyx (Shawn Wang)",
+    "handle": "@swyx",
+    "platform": "X / Latent Space",
+    "angle": "AI Engineer Foundation & Local LLMs",
+    "dm": "Hey Swyx — follow Latent Space religiously.\n\nWe built OpenExplee (https://github.com/vikasvardhanv/openexplee) — an MIT-licensed, self-hosted B2B prospecting engine that supports local Ollama models alongside cloud APIs.\n\nShows how agentic web crawling + structured extraction can replace an entire $3,600/year enterprise SaaS suite.\n\nWould love to know if this fits into the AI Engineer stack patterns you highlight!"
+  },
+  {
+    "name": "Danny Postma",
+    "handle": "@dannypostma",
+    "platform": "X / Twitter",
+    "angle": "Bootstrapping & lean infrastructure",
+    "dm": "Hey Danny — love your relentless shipping style with HeadshotPro.\n\nInstead of paying $300/mo to Explee/Instantly, we open-sourced the whole stack: OpenExplee (https://github.com/vikasvardhanv/openexplee).\n\nFastAPI + Tailwind single-container architecture, 4-tier live email verification for $0, and multi-domain rotation.\n\nThought you'd get a kick out of seeing SaaS margins compressed to zero!"
+  },
+  {
+    "name": "Tibomaker (Tibo)",
+    "handle": "@tibo_maker",
+    "platform": "X / Twitter",
+    "angle": "Organic growth and automation",
+    "dm": "Hey Tibo — loved how you scaled Tweet Hunter and Taplio.\n\nWe just launched OpenExplee (https://github.com/vikasvardhanv/openexplee) — a 100% free open-source alternative to Explee/Apollo for B2B lead discovery and automated cold outreach.\n\nSolves the biggest founder complaint: burning money on monthly lead credits. Single-click Docker deploy.\n\nHope this saves your followers some cash!"
+  }
+]
