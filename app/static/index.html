@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenExplee — Open-Source AI B2B Outreach & Discovery</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .glass-panel {
+      background: rgba(18, 24, 38, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+
+  <!-- Navigation Bar -->
+  <header class="border-b border-slate-800 bg-slate-900/80 sticky top-0 z-40 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+          <i data-lucide="send" class="w-5 h-5 text-white"></i>
+        </div>
+        <div>
+          <span class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent">OpenExplee</span>
+          <span class="ml-2 text-xs uppercase px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 font-semibold border border-indigo-500/20">Self-Hosted</span>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex space-x-1 sm:space-x-2">
+        <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn px-3 py-2 rounded-lg text-sm font-medium transition text-indigo-400 bg-indigo-500/10">
+          <i data-lucide="layout-dashboard" class="w-4 h-4 inline mr-1"></i> Dashboard
+        </button>
+        <button onclick="switchTab('campaigns')" id="tab-campaigns" class="tab-btn px-3 py-2 rounded-lg text-sm font-medium transition text-slate-400 hover:text-white hover:bg-slate-800">
+          <i data-lucide="sparkles" class="w-4 h-4 inline mr-1"></i> ICP Discovery
+        </button>
+        <button onclick="switchTab('leads')" id="tab-leads" class="tab-btn px-3 py-2 rounded-lg text-sm font-medium transition text-slate-400 hover:text-white hover:bg-slate-800">
+          <i data-lucide="users" class="w-4 h-4 inline mr-1"></i> Leads & AI Copy
+        </button>
+        <button onclick="switchTab('inboxes')" id="tab-inboxes" class="tab-btn px-3 py-2 rounded-lg text-sm font-medium transition text-slate-400 hover:text-white hover:bg-slate-800">
+          <i data-lucide="mail" class="w-4 h-4 inline mr-1"></i> Inboxes & Domains
+        </button>
+        <button onclick="switchTab('settings')" id="tab-settings" class="tab-btn px-3 py-2 rounded-lg text-sm font-medium transition text-slate-400 hover:text-white hover:bg-slate-800">
+          <i data-lucide="settings" class="w-4 h-4 inline mr-1"></i> Settings
+        </button>
+      </nav>
+
+      <div class="hidden sm:flex items-center space-x-3 text-xs text-slate-400">
+        <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span> Engine Online
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+
+    <!-- Notification Toast -->
+    <div id="toast" class="hidden fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 border text-sm transition-all"></div>
+
+    <!-- TAB 1: DASHBOARD -->
+    <section id="view-dashboard" class="space-y-8">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-bold text-white tracking-tight">Outreach Performance & Deliverability</h1>
+          <p class="text-slate-400 text-sm mt-1">Real-time health of your self-hosted AI lead discovery & sending engine.</p>
+        </div>
+        <div class="flex gap-3">
+          <button onclick="switchTab('campaigns')" class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition flex items-center space-x-2 shadow-lg shadow-indigo-600/20">
+            <i data-lucide="plus-circle" class="w-4 h-4"></i>
+            <span>New ICP Discovery</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Metrics Cards -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+        <div class="glass-panel p-5 rounded-2xl">
+          <div class="flex items-center justify-between text-slate-400 mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider">Total Leads</span>
+            <i data-lucide="target" class="w-4 h-4 text-indigo-400"></i>
+          </div>
+          <div id="metric-leads" class="text-3xl font-extrabold text-white">0</div>
+          <p class="text-xs text-slate-500 mt-2">Discovered from web crawlers</p>
+        </div>
+
+        <div class="glass-panel p-5 rounded-2xl">
+          <div class="flex items-center justify-between text-slate-400 mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider">Verified Deliverable</span>
+            <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
+          </div>
+          <div id="metric-verified" class="text-3xl font-extrabold text-emerald-400">0</div>
+          <p class="text-xs text-slate-500 mt-2">Passed MX + SMTP checks</p>
+        </div>
+
+        <div class="glass-panel p-5 rounded-2xl">
+          <div class="flex items-center justify-between text-slate-400 mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider">Outreach Sent</span>
+            <i data-lucide="send" class="w-4 h-4 text-violet-400"></i>
+          </div>
+          <div id="metric-sent" class="text-3xl font-extrabold text-violet-400">0</div>
+          <p class="text-xs text-slate-500 mt-2">Dispatched across inboxes</p>
+        </div>
+
+        <div class="glass-panel p-5 rounded-2xl">
+          <div class="flex items-center justify-between text-slate-400 mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider">Inbox Health Score</span>
+            <i data-lucide="activity" class="w-4 h-4 text-amber-400"></i>
+          </div>
+          <div id="metric-health" class="text-3xl font-extrabold text-amber-400">100%</div>
+          <p class="text-xs text-slate-500 mt-2">Warmup & sender reputation</p>
+        </div>
+      </div>
+
+      <!-- Quick Campaign Overview Table -->
+      <div class="glass-panel rounded-2xl p-6">
+        <h2 class="text-lg font-bold text-white mb-4 flex items-center justify-between">
+          <span>Active Campaigns</span>
+          <button onclick="loadDashboard()" class="text-xs text-slate-400 hover:text-white flex items-center gap-1">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh
+          </button>
+        </h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-300">
+            <thead class="text-xs uppercase bg-slate-900/50 text-slate-400 border-b border-slate-800">
+              <tr>
+                <th class="py-3 px-4">Campaign Name</th>
+                <th class="py-3 px-4">ICP Query</th>
+                <th class="py-3 px-4">Status</th>
+                <th class="py-3 px-4">Leads</th>
+                <th class="py-3 px-4">Sent</th>
+                <th class="py-3 px-4 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="dashboard-campaigns-body" class="divide-y divide-slate-800/60">
+              <tr>
+                <td colspan="6" class="py-6 text-center text-slate-500">Loading campaigns...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: CAMPAIGNS & ICP DISCOVERY -->
+    <section id="view-campaigns" class="hidden space-y-8">
+      <div class="glass-panel p-6 sm:p-8 rounded-2xl border border-indigo-500/20">
+        <div class="max-w-2xl">
+          <h2 class="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+            <i data-lucide="sparkles" class="w-5 h-5 text-indigo-400"></i>
+            <span>Create New ICP Discovery Campaign</span>
+          </h2>
+          <p class="text-slate-400 text-sm mt-1">
+            Describe your target customer in plain English. OpenExplee will search the web, scrape matching company sites, extract decision-makers, verify their corporate mailboxes, and draft personalized outreach.
+          </p>
+        </div>
+
+        <form id="form-create-campaign" onsubmit="handleCreateCampaign(event)" class="mt-6 space-y-4 max-w-3xl">
+          <div>
+            <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Campaign Name</label>
+            <input type="text" id="camp-name" required placeholder="e.g. US B2B SaaS Founders Q2" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Natural Language ICP (Target Audience)</label>
+            <textarea id="camp-icp" rows="2" required placeholder="e.g. B2B SaaS companies in the United States building developer tools or developer APIs" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"></textarea>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Target Industry / Niche</label>
+              <input type="text" id="camp-industry" value="Developer Tools & SaaS" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Your Product / Value Proposition</label>
+              <input type="text" id="camp-value" required placeholder="e.g. Automated CI/CD test acceleration cutting build times by 60%" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
+            </div>
+          </div>
+
+          <button type="submit" class="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition flex items-center space-x-2 shadow-lg shadow-indigo-600/30">
+            <i data-lucide="search" class="w-4 h-4"></i>
+            <span>Launch AI Discovery & Enrichment</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Existing Campaigns List -->
+      <div class="glass-panel p-6 rounded-2xl">
+        <h3 class="text-base font-bold text-white mb-4">All Campaigns</h3>
+        <div id="campaigns-list-container" class="space-y-4">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: LEADS & AI COPY STUDIO -->
+    <section id="view-leads" class="hidden space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-bold text-white tracking-tight">Leads & AI Personalization Studio</h2>
+          <p class="text-slate-400 text-sm">Review scraped prospects, test email deliverability, and refine AI pitches.</p>
+        </div>
+
+        <!-- Live Email Verification Widget -->
+        <div class="flex items-center gap-2">
+          <input type="email" id="test-verify-input" placeholder="test@targetdomain.com" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-56">
+          <button onclick="handleQuickVerify()" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5">
+            <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Test Mailbox
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Verify Result Banner -->
+      <div id="verify-result-box" class="hidden p-4 rounded-xl text-xs flex items-center justify-between"></div>
+
+      <!-- Leads Table -->
+      <div class="glass-panel rounded-2xl p-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-300">
+            <thead class="text-xs uppercase bg-slate-900/50 text-slate-400 border-b border-slate-800">
+              <tr>
+                <th class="py-3 px-4">Company & Domain</th>
+                <th class="py-3 px-4">Contact Person</th>
+                <th class="py-3 px-4">Email & Verification</th>
+                <th class="py-3 px-4">AI Draft Preview</th>
+                <th class="py-3 px-4">Status</th>
+                <th class="py-3 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="leads-table-body" class="divide-y divide-slate-800/60">
+              <tr>
+                <td colspan="6" class="py-6 text-center text-slate-500">No leads discovered yet. Launch an ICP campaign first!</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: INBOXES & DOMAINS -->
+    <section id="view-inboxes" class="hidden space-y-8">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Add Inbox Card -->
+        <div class="glass-panel p-6 rounded-2xl lg:col-span-1 space-y-4">
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <i data-lucide="plus" class="w-4 h-4 text-indigo-400"></i> Connect Sending Inbox
+          </h2>
+          <p class="text-xs text-slate-400">
+            Connect secondary outreach accounts (Google Workspace, Microsoft 365, or Hyvor Relay).
+          </p>
+
+          <form id="form-add-inbox" onsubmit="handleAddInbox(event)" class="space-y-3">
+            <div>
+              <label class="block text-xs uppercase text-slate-400 font-semibold mb-1">Provider</label>
+              <select id="inbox-provider" onchange="toggleProviderSettings()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+                <option value="google">Google Workspace (Gmail)</option>
+                <option value="outlook">Microsoft 365 (Office 365)</option>
+                <option value="hyvor">Hyvor Relay (Self-Hosted SMTP)</option>
+                <option value="custom">Custom SMTP Server</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs uppercase text-slate-400 font-semibold mb-1">Email Address</label>
+              <input type="email" id="inbox-email" required placeholder="alex@trycompany.com" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+            </div>
+
+            <div>
+              <label class="block text-xs uppercase text-slate-400 font-semibold mb-1">Sender Name</label>
+              <input type="text" id="inbox-name" required placeholder="Alex Morgan" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+            </div>
+
+            <div id="custom-smtp-fields" class="hidden space-y-3">
+              <div>
+                <label class="block text-xs uppercase text-slate-400 font-semibold mb-1">SMTP Host</label>
+                <input type="text" id="inbox-host" placeholder="smtp.yourdomain.com" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+              </div>
+              <div>
+                <label class="block text-xs uppercase text-slate-400 font-semibold mb-1">SMTP Port</label>
+                <input type="number" id="inbox-port" value="587" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs uppercase text-slate-400 font-semibold mb-1">SMTP Username</label>
+              <input type="text" id="inbox-user" required placeholder="alex@trycompany.com" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+            </div>
+
+            <div>
+              <label class="block text-xs uppercase text-slate-400 font-semibold mb-1">App Password / Password</label>
+              <input type="password" id="inbox-pass" required placeholder="••••••••••••" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+              <span class="text-[11px] text-slate-500 mt-1 block">For Google, use a 16-character <b>App Password</b>.</span>
+            </div>
+
+            <div>
+              <label class="block text-xs uppercase text-slate-400 font-semibold mb-1">Daily Sending Quota</label>
+              <input type="number" id="inbox-quota" value="35" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+              <span class="text-[11px] text-slate-500 mt-1 block">Recommended: 30-40 per day to maintain deliverability.</span>
+            </div>
+
+            <button type="submit" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition">
+              Add & Authenticate Inbox
+            </button>
+          </form>
+        </div>
+
+        <!-- Inboxes & DNS Deliverability Checker -->
+        <div class="lg:col-span-2 space-y-6">
+          <!-- DNS Firewall & Deliverability Checker -->
+          <div class="glass-panel p-6 rounded-2xl">
+            <h3 class="text-sm font-bold text-white flex items-center justify-between">
+              <span class="flex items-center gap-2"><i data-lucide="shield" class="w-4 h-4 text-emerald-400"></i> Domain Deliverability Firewall (SPF / DKIM / DMARC)</span>
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">Audit any secondary outreach domain to verify its mail records before sending.</p>
+            
+            <div class="flex gap-2 mt-4">
+              <input type="text" id="dns-domain-input" placeholder="tryyourcompany.com" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+              <button onclick="handleAuditDns()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl transition">
+                Audit Records
+              </button>
+            </div>
+            <div id="dns-audit-result" class="hidden mt-4 p-4 rounded-xl bg-slate-900 border border-slate-800 text-xs space-y-2"></div>
+          </div>
+
+          <!-- Connected Inboxes Table -->
+          <div class="glass-panel p-6 rounded-2xl">
+            <h3 class="text-base font-bold text-white mb-4">Connected Outreach Inboxes</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm text-slate-300">
+                <thead class="text-xs uppercase bg-slate-900/50 text-slate-400 border-b border-slate-800">
+                  <tr>
+                    <th class="py-3 px-4">Inbox</th>
+                    <th class="py-3 px-4">Provider</th>
+                    <th class="py-3 px-4">Quota Today</th>
+                    <th class="py-3 px-4">Health Score</th>
+                    <th class="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="inboxes-table-body" class="divide-y divide-slate-800/60">
+                  <tr>
+                    <td colspan="5" class="py-6 text-center text-slate-500">No inboxes connected yet.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: SETTINGS -->
+    <section id="view-settings" class="hidden space-y-6 max-w-3xl">
+      <div class="glass-panel p-6 sm:p-8 rounded-2xl">
+        <h2 class="text-xl font-bold text-white mb-1">AI Engine & Search Configuration</h2>
+        <p class="text-slate-400 text-sm mb-6">Choose your preferred LLM provider for cold outreach drafting and ICP analysis.</p>
+
+        <form id="form-settings" onsubmit="handleSaveSettings(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Default AI Provider</label>
+            <select id="settings-provider" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
+              <option value="gemini">Google Gemini (Recommended - Fast & Cost-Effective)</option>
+              <option value="openai">OpenAI (GPT-4o Mini / GPT-4o)</option>
+              <option value="anthropic">Anthropic (Claude 3.5 Sonnet / Haiku)</option>
+              <option value="groq">Groq (Llama 3.3 70B - Ultra Fast)</option>
+              <option value="ollama">Ollama (100% Local / Free)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Google Gemini API Key</label>
+            <input type="password" id="key-gemini" placeholder="AIzaSy••••••••••••" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
+          </div>
+
+          <div>
+            <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">OpenAI API Key</label>
+            <input type="password" id="key-openai" placeholder="sk-proj-••••••••••••" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
+          </div>
+
+          <div>
+            <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Anthropic Claude API Key</label>
+            <input type="password" id="key-anthropic" placeholder="sk-ant-••••••••••••" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
+          </div>
+
+          <div>
+            <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Local Ollama Base URL</label>
+            <input type="text" id="url-ollama" value="http://localhost:11434" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
+          </div>
+
+          <div>
+            <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Serper Google Search API Key (Optional)</label>
+            <input type="password" id="key-serper" placeholder="Optional - Falls back to free DuckDuckGo" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
+          </div>
+
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition">
+            Save Settings
+          </button>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="border-t border-slate-900 py-6 text-center text-xs text-slate-500">
+    OpenExplee — Free & Open-Source AI Outbound Engine &middot; Released under the MIT License
+  </footer>
+
+  <!-- Application Logic -->
+  <script>
+    lucide.createIcons();
+
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.className = `fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 border text-sm transition-all ${
+        type === 'success' ? 'bg-emerald-950/90 text-emerald-300 border-emerald-800' : 'bg-rose-950/90 text-rose-300 border-rose-800'
+      }`;
+      toast.innerHTML = `<span>${message}</span>`;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 4000);
+    }
+
+    function switchTab(tabId) {
+      ['dashboard', 'campaigns', 'leads', 'inboxes', 'settings'].forEach(t => {
+        document.getElementById(`view-${t}`).classList.add('hidden');
+        document.getElementById(`tab-${t}`).className = 'tab-btn px-3 py-2 rounded-lg text-sm font-medium transition text-slate-400 hover:text-white hover:bg-slate-800';
+      });
+      document.getElementById(`view-${tabId}`).classList.remove('hidden');
+      document.getElementById(`tab-${tabId}`).className = 'tab-btn px-3 py-2 rounded-lg text-sm font-medium transition text-indigo-400 bg-indigo-500/10';
+
+      if (tabId === 'dashboard') loadDashboard();
+      if (tabId === 'campaigns') loadCampaigns();
+      if (tabId === 'leads') loadLeads();
+      if (tabId === 'inboxes') loadInboxes();
+      if (tabId === 'settings') loadSettings();
+    }
+
+    async function loadDashboard() {
+      try {
+        const res = await fetch('/api/stats');
+        const data = await res.json();
+        document.getElementById('metric-leads').innerText = data.total_leads || 0;
+        document.getElementById('metric-verified').innerText = data.verified_leads || 0;
+        document.getElementById('metric-sent').innerText = data.emails_sent || 0;
+        document.getElementById('metric-health').innerText = `${data.avg_health_score || 100}%`;
+
+        const campRes = await fetch('/api/campaigns');
+        const camps = await campRes.json();
+        const tbody = document.getElementById('dashboard-campaigns-body');
+        if (!camps.length) {
+          tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-500">No campaigns yet. Click 'New ICP Discovery' to start.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = camps.map(c => `
+          <tr class="hover:bg-slate-900/40">
+            <td class="py-3 px-4 font-semibold text-white">${c.name}</td>
+            <td class="py-3 px-4 text-slate-400 truncate max-w-xs">${c.icp_prompt}</td>
+            <td class="py-3 px-4">
+              <span class="px-2 py-0.5 rounded text-xs font-semibold ${
+                c.status === 'ready' ? 'bg-emerald-500/10 text-emerald-400' :
+                c.status === 'discovering' ? 'bg-amber-500/10 text-amber-400 animate-pulse' :
+                'bg-slate-800 text-slate-400'
+              }">${c.status.toUpperCase()}</span>
+            </td>
+            <td class="py-3 px-4">${c.total_leads || 0}</td>
+            <td class="py-3 px-4 text-indigo-400 font-medium">${c.sent_count || 0}</td>
+            <td class="py-3 px-4 text-right">
+              <button onclick="launchCampaign(${c.id})" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium">
+                Dispatch Batch
+              </button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function handleCreateCampaign(e) {
+      e.preventDefault();
+      const payload = {
+        name: document.getElementById('camp-name').value,
+        icp_prompt: document.getElementById('camp-icp').value,
+        target_industry: document.getElementById('camp-industry').value,
+        value_proposition: document.getElementById('camp-value').value,
+      };
+
+      try {
+        const res = await fetch('/api/campaigns', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          showToast('Discovery started in background! Scraper and email verifier are running.');
+          document.getElementById('form-create-campaign').reset();
+          loadCampaigns();
+          setTimeout(() => switchTab('leads'), 2000);
+        }
+      } catch (err) {
+        showToast('Error creating campaign', 'error');
+      }
+    }
+
+    async function loadCampaigns() {
+      const res = await fetch('/api/campaigns');
+      const camps = await res.json();
+      const container = document.getElementById('campaigns-list-container');
+      if (!camps.length) {
+        container.innerHTML = `<p class="text-slate-500 text-xs">No active campaigns.</p>`;
+        return;
+      }
+      container.innerHTML = camps.map(c => `
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+          <div>
+            <h4 class="font-bold text-white text-sm">${c.name}</h4>
+            <p class="text-xs text-slate-400 mt-0.5">${c.icp_prompt}</p>
+            <div class="flex gap-2 text-xs text-slate-500 mt-2">
+              <span>Leads: <b>${c.total_leads}</b></span> &middot;
+              <span>Verified: <b>${c.verified_count || 0}</b></span> &middot;
+              <span>Status: <b class="text-indigo-400">${c.status}</b></span>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="launchCampaign(${c.id})" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold">
+              Dispatch Batch
+            </button>
+            <button onclick="deleteCampaign(${c.id})" class="px-2 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs">
+              Delete
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function launchCampaign(id) {
+      const res = await fetch(`/api/campaigns/${id}/launch`, { method: 'POST' });
+      const data = await res.json();
+      if (data.dispatched > 0) {
+        showToast(`Dispatched ${data.dispatched} personalized emails across your inboxes!`);
+      } else {
+        showToast(data.errors?.[0] || 'No queued leads or inboxes available', 'error');
+      }
+      loadDashboard();
+    }
+
+    async function deleteCampaign(id) {
+      if (!confirm('Delete this campaign and associated leads?')) return;
+      await fetch(`/api/campaigns/${id}`, { method: 'DELETE' });
+      showToast('Campaign deleted');
+      loadCampaigns();
+    }
+
+    async function loadLeads() {
+      const res = await fetch('/api/leads?limit=50');
+      const leads = await res.json();
+      const tbody = document.getElementById('leads-table-body');
+      if (!leads.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-500">No leads found. Launch an ICP campaign to start crawling!</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = leads.map(l => {
+        let badge = 'bg-slate-800 text-slate-400';
+        if (l.verification_status === 'verified') badge = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+        if (l.verification_status === 'deliverable') badge = 'bg-emerald-500/10 text-emerald-300';
+        if (l.verification_status === 'catch_all' || l.verification_status === 'risky') badge = 'bg-amber-500/20 text-amber-300';
+        if (l.verification_status === 'invalid') badge = 'bg-rose-500/20 text-rose-300';
+
+        return `
+          <tr class="hover:bg-slate-900/40">
+            <td class="py-3 px-4">
+              <div class="font-semibold text-white">${l.company_name}</div>
+              <a href="${l.website_url}" target="_blank" class="text-xs text-indigo-400 hover:underline">${l.company_domain}</a>
+            </td>
+            <td class="py-3 px-4">
+              <div class="font-medium text-slate-200">${l.contact_name}</div>
+              <div class="text-xs text-slate-500">${l.job_title}</div>
+            </td>
+            <td class="py-3 px-4">
+              <div class="text-xs font-mono">${l.email || '—'}</div>
+              <span class="inline-block px-2 py-0.5 mt-1 rounded text-[10px] font-bold uppercase ${badge}">
+                ${l.verification_status}
+              </span>
+            </td>
+            <td class="py-3 px-4 max-w-xs">
+              <div class="text-xs font-semibold text-slate-200 truncate">${l.personalized_subject || 'No subject drafted'}</div>
+              <div class="text-[11px] text-slate-400 truncate mt-0.5">${l.personalized_body || '—'}</div>
+            </td>
+            <td class="py-3 px-4">
+              <span class="text-xs font-semibold uppercase px-2 py-0.5 rounded ${
+                l.status === 'sent' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-400'
+              }">${l.status}</span>
+            </td>
+            <td class="py-3 px-4 text-right">
+              <button onclick="handleVerifySingleLead(${l.id}, '${l.email}')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-xs rounded text-slate-200">
+                Verify
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function handleQuickVerify() {
+      const email = document.getElementById('test-verify-input').value.trim();
+      if (!email) return;
+
+      const resBox = document.getElementById('verify-result-box');
+      resBox.className = 'p-4 rounded-xl text-xs flex items-center justify-between bg-slate-900 border border-slate-800';
+      resBox.innerHTML = `<span>Validating MX records and performing SMTP handshake for <b>${email}</b>...</span>`;
+      resBox.classList.remove('hidden');
+
+      const res = await fetch('/api/leads/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+
+      let color = data.status === 'verified' || data.status === 'deliverable' ? 'text-emerald-400 bg-emerald-950/40 border-emerald-800' : 'text-rose-400 bg-rose-950/40 border-rose-800';
+      resBox.className = `p-4 rounded-xl text-xs flex items-center justify-between border ${color}`;
+      resBox.innerHTML = `
+        <div>
+          <b>${email}</b>: Status <b>${data.status.toUpperCase()}</b> (Score: ${data.score}/100).
+          <div class="text-[11px] opacity-80 mt-0.5">MX Host: ${data.mx_host || 'None'} &middot; ${data.details}</div>
+        </div>
+      `;
+    }
+
+    async function handleVerifySingleLead(leadId, email) {
+      if (!email) return;
+      showToast(`Verifying ${email}...`);
+      const res = await fetch('/api/leads/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      showToast(`${email}: ${data.status} (${data.details})`);
+      loadLeads();
+    }
+
+    function toggleProviderSettings() {
+      const p = document.getElementById('inbox-provider').value;
+      const custom = document.getElementById('custom-smtp-fields');
+      if (p === 'custom' || p === 'hyvor') {
+        custom.classList.remove('hidden');
+      } else {
+        custom.classList.add('hidden');
+      }
+    }
+
+    async function handleAddInbox(e) {
+      e.preventDefault();
+      const payload = {
+        provider: document.getElementById('inbox-provider').value,
+        email: document.getElementById('inbox-email').value,
+        display_name: document.getElementById('inbox-name').value,
+        smtp_user: document.getElementById('inbox-user').value,
+        smtp_password: document.getElementById('inbox-pass').value,
+        daily_quota: parseInt(document.getElementById('inbox-quota').value) || 35,
+        smtp_host: document.getElementById('inbox-host').value || null,
+        smtp_port: parseInt(document.getElementById('inbox-port').value) || 587
+      };
+
+      try {
+        const res = await fetch('/api/inboxes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          showToast('Inbox added successfully!');
+          document.getElementById('form-add-inbox').reset();
+          loadInboxes();
+        } else {
+          const err = await res.json();
+          showToast(err.detail || 'Failed to add inbox', 'error');
+        }
+      } catch (err) {
+        showToast('Error adding inbox', 'error');
+      }
+    }
+
+    async function loadInboxes() {
+      const res = await fetch('/api/inboxes');
+      const inboxes = await res.json();
+      const tbody = document.getElementById('inboxes-table-body');
+      if (!inboxes.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-500">No inboxes connected yet. Add one on the left.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = inboxes.map(i => `
+        <tr class="hover:bg-slate-900/40">
+          <td class="py-3 px-4">
+            <div class="font-semibold text-white">${i.email}</div>
+            <div class="text-xs text-slate-500">${i.display_name}</div>
+          </td>
+          <td class="py-3 px-4">
+            <span class="text-xs font-mono uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-300">${i.provider}</span>
+          </td>
+          <td class="py-3 px-4 text-xs">
+            <b>${i.sent_today}</b> / ${i.daily_quota}
+          </td>
+          <td class="py-3 px-4">
+            <span class="px-2 py-0.5 rounded text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+              ${i.health_score}%
+            </span>
+          </td>
+          <td class="py-3 px-4 text-right space-x-1">
+            <button onclick="testInbox(${i.id})" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-xs rounded text-slate-200">
+              Test SMTP
+            </button>
+            <button onclick="tickWarmup(${i.id})" class="px-2 py-1 bg-indigo-500/20 hover:bg-indigo-500/30 text-xs rounded text-indigo-300">
+              Warmup
+            </button>
+            <button onclick="deleteInbox(${i.id})" class="px-2 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-xs rounded text-rose-400">
+              &times;
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function testInbox(id) {
+      showToast('Testing SMTP connection...');
+      const res = await fetch(`/api/inboxes/${id}/test`, { method: 'POST' });
+      const data = await res.json();
+      if (data.connected) {
+        showToast(data.message, 'success');
+      } else {
+        showToast(`SMTP Error: ${data.error}`, 'error');
+      }
+    }
+
+    async function tickWarmup(id) {
+      const res = await fetch(`/api/inboxes/${id}/warmup-tick`, { method: 'POST' });
+      const data = await res.json();
+      showToast(`Warmup exchange logged! Health score: ${data.health_score}%`);
+      loadInboxes();
+    }
+
+    async function deleteInbox(id) {
+      if (!confirm('Remove this inbox?')) return;
+      await fetch(`/api/inboxes/${id}`, { method: 'DELETE' });
+      showToast('Inbox removed');
+      loadInboxes();
+    }
+
+    async function handleAuditDns() {
+      const domain = document.getElementById('dns-domain-input').value.trim();
+      if (!domain) return;
+      const box = document.getElementById('dns-audit-result');
+      box.classList.remove('hidden');
+      box.innerHTML = `<span class="text-slate-400">Querying DNS records for <b>${domain}</b>...</span>`;
+
+      const res = await fetch('/api/inboxes/check-dns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain })
+      });
+      const data = await res.json();
+
+      box.innerHTML = `
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+          <span class="font-bold text-white">${data.domain}</span>
+          <span class="px-2 py-0.5 rounded text-xs font-bold ${data.score >= 80 ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-400 bg-amber-500/10'}">
+            Score: ${data.score}/100
+          </span>
+        </div>
+        <div class="grid grid-cols-3 gap-2 py-2">
+          <div>MX: <b class="${data.has_mx ? 'text-emerald-400' : 'text-rose-400'}">${data.has_mx ? 'Active' : 'Missing'}</b></div>
+          <div>SPF: <b class="${data.has_spf ? 'text-emerald-400' : 'text-rose-400'}">${data.has_spf ? 'Active' : 'Missing'}</b></div>
+          <div>DMARC: <b class="${data.has_dmarc ? 'text-emerald-400' : 'text-rose-400'}">${data.has_dmarc ? 'Active' : 'Missing'}</b></div>
+        </div>
+        ${data.recommendations.length ? `<div class="text-[11px] text-amber-300 mt-2 font-mono">${data.recommendations.join('<br>')}</div>` : '<div class="text-emerald-400 text-xs">All core records properly configured! Ready to send.</div>'}
+      `;
+    }
+
+    async function loadSettings() {
+      const res = await fetch('/api/settings');
+      const data = await res.json();
+      document.getElementById('settings-provider').value = data.default_llm_provider || 'gemini';
+      if (data.gemini_api_key) document.getElementById('key-gemini').placeholder = data.gemini_api_key;
+      if (data.openai_api_key) document.getElementById('key-openai').placeholder = data.openai_api_key;
+      if (data.anthropic_api_key) document.getElementById('key-anthropic').placeholder = data.anthropic_api_key;
+      if (data.ollama_base_url) document.getElementById('url-ollama').value = data.ollama_base_url;
+      if (data.serper_api_key) document.getElementById('key-serper').placeholder = data.serper_api_key;
+    }
+
+    async function handleSaveSettings(e) {
+      e.preventDefault();
+      const payload = {
+        default_llm_provider: document.getElementById('settings-provider').value,
+        gemini_api_key: document.getElementById('key-gemini').value || null,
+        openai_api_key: document.getElementById('key-openai').value || null,
+        anthropic_api_key: document.getElementById('key-anthropic').value || null,
+        ollama_base_url: document.getElementById('url-ollama').value || 'http://localhost:11434',
+        serper_api_key: document.getElementById('key-serper').value || null
+      };
+
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        showToast('Settings saved successfully!');
+      }
+    }
+
+    // Initial load
+    loadDashboard();
+  </script>
+</body>
+</html>

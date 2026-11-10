@@ -1,0 +1,25 @@
+version: "3.8"
+
+services:
+  openexplee:
+    build: .
+    container_name: openexplee
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DATABASE_PATH=/app/data/openexplee.db
+      - DEFAULT_LLM_PROVIDER=${DEFAULT_LLM_PROVIDER:-gemini}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - SERPER_API_KEY=${SERPER_API_KEY}
+    volumes:
+      - openexplee_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  openexplee_data:
