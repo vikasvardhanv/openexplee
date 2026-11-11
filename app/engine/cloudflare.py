@@ -125,3 +125,4 @@ async def auto_setup_cloudflare_domain(
 
     results["status"] = "completed"
     return results
+

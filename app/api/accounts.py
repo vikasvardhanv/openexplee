@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 import aiosmtplib
+import httpx
 from app.database import get_db_connection
 from app.engine.warmup import check_domain_dns_health, simulate_warmup_tick
 
@@ -11,7 +12,7 @@ router = APIRouter(prefix="/api/inboxes", tags=["inboxes"])
 class InboxCreate(BaseModel):
     email: str
     display_name: str
-    provider: str  # 'google', 'outlook', 'hyvor', 'custom'
+    provider: str  # 'google', 'outlook', 'hyvor', 'cf_worker', 'mailflare', 'custom'
     smtp_host: Optional[str] = None
     smtp_port: Optional[int] = 587
     smtp_user: str
@@ -49,9 +50,15 @@ async def create_inbox(req: InboxCreate):
     elif req.provider == "hyvor":
         smtp_host = smtp_host or "mail.hyvor.com"
         smtp_port = 587
+    elif req.provider in ("cf_worker", "mailflare"):
+        if not smtp_host:
+            raise HTTPException(status_code=400, detail="Worker / Mailflare base URL is required")
+        if not smtp_host.startswith("http"):
+            smtp_host = f"https://{smtp_host}"
+        smtp_port = 443
 
     if not smtp_host:
-        raise HTTPException(status_code=400, detail="SMTP host is required for custom provider")
+        raise HTTPException(status_code=400, detail="SMTP host or endpoint URL is required")
 
     conn = await get_db_connection()
     try:
@@ -87,6 +94,26 @@ async def test_inbox_connection(inbox_id: int):
     await conn.close()
 
     try:
+        provider = inbox.get("provider", "custom")
+        if provider == "cf_worker":
+            base_url = inbox["smtp_host"].rstrip("/")
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(f"{base_url}/health")
+                if resp.status_code == 200 and resp.json().get("ok"):
+                    return {"connected": True, "message": "Cloudflare Email Worker is online and reachable!"}
+                return {"connected": False, "error": f"Worker returned HTTP {resp.status_code}"}
+
+        if provider == "mailflare":
+            base_url = inbox["smtp_host"].rstrip("/")
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(
+                    f"{base_url}/api/v1/mailboxes",
+                    headers={"Authorization": f"Bearer {inbox['smtp_password']}"}
+                )
+                if resp.status_code == 200:
+                    return {"connected": True, "message": "Mailflare API authenticated successfully!"}
+                return {"connected": False, "error": f"Mailflare returned HTTP {resp.status_code}: {resp.text}"}
+
         port = inbox.get("smtp_port", 587)
         use_tls = (port == 465)
         start_tls = (port == 587 or inbox.get("use_tls", 1))

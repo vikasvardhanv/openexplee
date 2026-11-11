@@ -16,6 +16,10 @@ data/
 .env
 .env.local
 
+# Node / Cloudflare Worker
+node_modules/
+.wrangler/
+
 # IDE
 .idea/
 .vscode/

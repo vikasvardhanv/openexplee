@@ -76,3 +76,4 @@ Return strictly valid JSON with keys: "product_name", "value_proposition", "targ
             }
         ]
     }
+

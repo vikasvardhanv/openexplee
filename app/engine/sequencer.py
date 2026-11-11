@@ -4,6 +4,7 @@ from email.message import EmailMessage
 from email.utils import make_msgid, formatdate
 from datetime import datetime
 import aiosmtplib
+import httpx
 from typing import Dict, Any, Optional
 from app.database import get_db_connection
 from app.engine.copywriter import resolve_spintax
@@ -27,6 +28,133 @@ async def get_next_available_inbox() -> Optional[Dict[str, Any]]:
     return None
 
 
+async def _record_send_success(inbox_id: int, inbox_email: str, lead_id: Optional[int]) -> None:
+    """Updates inbox daily quota, lead status, and campaign counters after delivery."""
+    conn = await get_db_connection()
+    try:
+        async with conn.cursor() as cursor:
+            await cursor.execute("""
+                UPDATE inboxes 
+                SET sent_today = sent_today + 1, last_sent_at = CURRENT_TIMESTAMP 
+                WHERE id = ?
+            """, (inbox_id,))
+
+            if lead_id:
+                await cursor.execute("""
+                    UPDATE leads 
+                    SET status = 'sent', sent_at = CURRENT_TIMESTAMP, sent_from_inbox = ? 
+                    WHERE id = ?
+                """, (inbox_email, lead_id))
+
+                await cursor.execute("""
+                    UPDATE campaigns 
+                    SET sent_count = sent_count + 1 
+                    WHERE id = (SELECT campaign_id FROM leads WHERE id = ?)
+                """, (lead_id,))
+
+            await conn.commit()
+    finally:
+        await conn.close()
+
+
+async def _send_via_cf_worker(
+    inbox: Dict[str, Any], to_email: str, subject: str, body: str
+) -> None:
+    """Dispatches email via the OpenExplee Cloudflare Email Worker (/send)."""
+    base_url = inbox["smtp_host"].rstrip("/")
+    if not base_url.startswith("http"):
+        base_url = f"https://{base_url}"
+
+    payload: Dict[str, Any] = {
+        "from": inbox["email"],
+        "to": to_email,
+        "subject": subject,
+        "text": body,
+    }
+    if inbox.get("display_name"):
+        payload["fromName"] = inbox["display_name"]
+    if inbox.get("cc_email"):
+        payload["cc"] = inbox["cc_email"]
+    if inbox.get("reply_to"):
+        payload["replyTo"] = inbox["reply_to"]
+
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        resp = await client.post(
+            f"{base_url}/send",
+            headers={"Authorization": f"Bearer {inbox['smtp_password']}"},
+            json=payload,
+        )
+        if resp.status_code >= 400:
+            raise RuntimeError(f"CF Worker HTTP {resp.status_code}: {resp.text}")
+
+
+async def _send_via_mailflare(
+    inbox: Dict[str, Any], to_email: str, subject: str, body: str
+) -> None:
+    """Dispatches email via Mailflare's authenticated REST API (/api/v1/send)."""
+    base_url = inbox["smtp_host"].rstrip("/")
+    if not base_url.startswith("http"):
+        base_url = f"https://{base_url}"
+
+    from_addr = f"{inbox['display_name']} <{inbox['email']}>" if inbox.get("display_name") else inbox["email"]
+    payload: Dict[str, Any] = {
+        "from": from_addr,
+        "to": [to_email],
+        "subject": subject,
+        "text": body,
+        "mailboxId": inbox["smtp_user"],
+    }
+    if inbox.get("cc_email"):
+        payload["cc"] = inbox["cc_email"]
+
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        resp = await client.post(
+            f"{base_url}/api/v1/send",
+            headers={"Authorization": f"Bearer {inbox['smtp_password']}"},
+            json=payload,
+        )
+        if resp.status_code >= 400:
+            raise RuntimeError(f"Mailflare HTTP {resp.status_code}: {resp.text}")
+
+
+async def _send_via_smtp(
+    inbox: Dict[str, Any], to_email: str, subject: str, body: str
+) -> None:
+    """Dispatches email over standard SMTP (Google Workspace, M365, Hyvor Relay, Custom)."""
+    msg = EmailMessage()
+    from_header = f"{inbox['display_name']} <{inbox['email']}>" if inbox.get("display_name") else inbox["email"]
+    msg["From"] = from_header
+    msg["To"] = to_email
+    msg["Subject"] = subject
+    msg["Date"] = formatdate(localtime=True)
+    msg["Message-ID"] = make_msgid(domain=inbox["email"].split("@")[-1])
+
+    if inbox.get("reply_to"):
+        msg["Reply-To"] = inbox["reply_to"]
+    if inbox.get("cc_email"):
+        msg["Cc"] = inbox["cc_email"]
+
+    unsubscribe_mail = f"mailto:unsubscribe@{inbox['email'].split('@')[-1]}?subject=Unsubscribe"
+    msg["List-Unsubscribe"] = f"<{unsubscribe_mail}>"
+    msg.set_content(body)
+
+    port = inbox.get("smtp_port", 587)
+    use_tls = (port == 465)
+    start_tls = (port == 587 or bool(inbox.get("use_tls", 1)))
+
+    smtp_client = aiosmtplib.SMTP(
+        hostname=inbox["smtp_host"],
+        port=port,
+        use_tls=use_tls,
+        start_tls=start_tls,
+        timeout=15.0
+    )
+    await smtp_client.connect()
+    await smtp_client.login(inbox["smtp_user"], inbox["smtp_password"])
+    await smtp_client.send_message(msg)
+    await smtp_client.quit()
+
+
 async def send_single_email(
     inbox: Dict[str, Any],
     to_email: str,
@@ -35,81 +163,27 @@ async def send_single_email(
     lead_id: Optional[int] = None
 ) -> Dict[str, Any]:
     """
-    Sends an outbound email via the selected inbox account with deliverability headers.
+    Sends an outbound email via SMTP, Cloudflare Email Worker, or Mailflare API.
     """
-    msg = EmailMessage()
     clean_subject = resolve_spintax(subject)
     clean_body = resolve_spintax(body)
-
-    from_header = f"{inbox['display_name']} <{inbox['email']}>" if inbox.get("display_name") else inbox["email"]
-    msg["From"] = from_header
-    msg["To"] = to_email
-    msg["Subject"] = clean_subject
-    msg["Date"] = formatdate(localtime=True)
-    msg["Message-ID"] = make_msgid(domain=inbox["email"].split("@")[-1])
-
-    # CC & Reply-To Routing (e.g. your primary vikash@viktron.ai email)
-    if inbox.get("reply_to"):
-        msg["Reply-To"] = inbox["reply_to"]
-    if inbox.get("cc_email"):
-        msg["Cc"] = inbox["cc_email"]
-    
-    # Unsubscribe header for cold outreach compliance
-    unsubscribe_mail = f"mailto:unsubscribe@{inbox['email'].split('@')[-1]}?subject=Unsubscribe"
-    msg["List-Unsubscribe"] = f"<{unsubscribe_mail}>"
-    msg.set_content(clean_body)
-
     result = {"success": False, "inbox_email": inbox["email"], "error": None}
 
     try:
-        # Determine port & TLS configuration
-        port = inbox.get("smtp_port", 587)
-        use_tls = (port == 465)
-        start_tls = (port == 587 or inbox.get("use_tls", 1))
-
-        smtp_client = aiosmtplib.SMTP(
-            hostname=inbox["smtp_host"],
-            port=port,
-            use_tls=use_tls,
-            start_tls=start_tls,
-            timeout=15.0
-        )
-        await smtp_client.connect()
-        await smtp_client.login(inbox["smtp_user"], inbox["smtp_password"])
-        await smtp_client.send_message(msg)
-        await smtp_client.quit()
+        provider = inbox.get("provider", "custom")
+        if provider == "cf_worker":
+            await _send_via_cf_worker(inbox, to_email, clean_subject, clean_body)
+        elif provider == "mailflare":
+            await _send_via_mailflare(inbox, to_email, clean_subject, clean_body)
+        else:
+            await _send_via_smtp(inbox, to_email, clean_subject, clean_body)
 
         result["success"] = True
-
-        # Update database counters
-        conn = await get_db_connection()
-        async with conn.cursor() as cursor:
-            await cursor.execute("""
-                UPDATE inboxes 
-                SET sent_today = sent_today + 1, last_sent_at = CURRENT_TIMESTAMP 
-                WHERE id = ?
-            """, (inbox["id"],))
-
-            if lead_id:
-                await cursor.execute("""
-                    UPDATE leads 
-                    SET status = 'sent', sent_at = CURRENT_TIMESTAMP, sent_from_inbox = ? 
-                    WHERE id = ?
-                """, (inbox["email"], lead_id))
-
-                # Increment campaign count
-                await cursor.execute("""
-                    UPDATE campaigns 
-                    SET sent_count = sent_count + 1 
-                    WHERE id = (SELECT campaign_id FROM leads WHERE id = ?)
-                """, (lead_id,))
-
-            await conn.commit()
-            await conn.close()
+        await _record_send_success(inbox["id"], inbox["email"], lead_id)
 
     except Exception as e:
         result["error"] = str(e)
-        print(f"[Sequencer] Send failed via {inbox['email']}: {e}")
+        print(f"[Sequencer] Send failed via {inbox['email']} ({inbox.get('provider')}): {e}")
 
     return result
 

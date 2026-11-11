@@ -308,6 +308,8 @@
               <select id="inbox-provider" onchange="toggleProviderSettings()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
                 <option value="google">Google Workspace (Gmail)</option>
                 <option value="outlook">Microsoft 365 (Office 365)</option>
+                <option value="cf_worker">Cloudflare Email Worker (send_email)</option>
+                <option value="mailflare">Mailflare Workspace API (Cloudflare)</option>
                 <option value="hyvor">Hyvor Relay (Self-Hosted SMTP)</option>
                 <option value="custom">Custom SMTP Server</option>
               </select>
@@ -325,24 +327,24 @@
 
             <div id="custom-smtp-fields" class="hidden space-y-3">
               <div>
-                <label class="block text-xs uppercase text-slate-400 font-semibold mb-1">SMTP Host</label>
+                <label id="label-inbox-host" class="block text-xs uppercase text-slate-400 font-semibold mb-1">SMTP Host</label>
                 <input type="text" id="inbox-host" placeholder="smtp.yourdomain.com" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
               </div>
-              <div>
+              <div id="inbox-port-wrap">
                 <label class="block text-xs uppercase text-slate-400 font-semibold mb-1">SMTP Port</label>
                 <input type="number" id="inbox-port" value="587" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
               </div>
             </div>
 
             <div>
-              <label class="block text-xs uppercase text-slate-400 font-semibold mb-1">SMTP Username</label>
+              <label id="label-inbox-user" class="block text-xs uppercase text-slate-400 font-semibold mb-1">SMTP Username</label>
               <input type="text" id="inbox-user" required placeholder="alex@trycompany.com" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
             </div>
 
             <div>
-              <label class="block text-xs uppercase text-slate-400 font-semibold mb-1">App Password / Password</label>
+              <label id="label-inbox-pass" class="block text-xs uppercase text-slate-400 font-semibold mb-1">App Password / Password</label>
               <input type="password" id="inbox-pass" required placeholder="••••••••••••" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
-              <span class="text-[11px] text-slate-500 mt-1 block">For Google, use a 16-character <b>App Password</b>.</span>
+              <span id="hint-inbox-pass" class="text-[11px] text-slate-500 mt-1 block">For Google, use a 16-character <b>App Password</b>.</span>
             </div>
 
             <div>
@@ -738,10 +740,47 @@
     function toggleProviderSettings() {
       const p = document.getElementById('inbox-provider').value;
       const custom = document.getElementById('custom-smtp-fields');
-      if (p === 'custom' || p === 'hyvor') {
+      const portWrap = document.getElementById('inbox-port-wrap');
+      const hostLabel = document.getElementById('label-inbox-host');
+      const hostInput = document.getElementById('inbox-host');
+      const userLabel = document.getElementById('label-inbox-user');
+      const userInput = document.getElementById('inbox-user');
+      const passLabel = document.getElementById('label-inbox-pass');
+      const passHint = document.getElementById('hint-inbox-pass');
+
+      if (p === 'cf_worker') {
         custom.classList.remove('hidden');
+        portWrap.classList.add('hidden');
+        hostLabel.innerText = 'Cloudflare Worker URL';
+        hostInput.placeholder = 'https://openexplee-cf-mailer.<subdomain>.workers.dev';
+        userLabel.innerText = 'Worker Key Name (any label)';
+        userInput.placeholder = 'cf-worker-default';
+        passLabel.innerText = 'WORKER_AUTH_TOKEN';
+        passHint.innerHTML = 'Secret set via <code>wrangler secret put WORKER_AUTH_TOKEN</code>.';
+      } else if (p === 'mailflare') {
+        custom.classList.remove('hidden');
+        portWrap.classList.add('hidden');
+        hostLabel.innerText = 'Mailflare App URL';
+        hostInput.placeholder = 'https://mailflare.<subdomain>.workers.dev';
+        userLabel.innerText = 'Mailflare Mailbox ID';
+        userInput.placeholder = 'mbx_... (from Mailflare Settings)';
+        passLabel.innerText = 'Mailflare API Key (send scope)';
+        passHint.innerHTML = 'API key created in Mailflare Settings &rarr; API keys.';
+      } else if (p === 'custom' || p === 'hyvor') {
+        custom.classList.remove('hidden');
+        portWrap.classList.remove('hidden');
+        hostLabel.innerText = 'SMTP Host';
+        hostInput.placeholder = p === 'hyvor' ? 'mail.hyvor.com' : 'smtp.yourdomain.com';
+        userLabel.innerText = 'SMTP Username';
+        userInput.placeholder = 'alex@trycompany.com';
+        passLabel.innerText = 'App Password / Password';
+        passHint.innerHTML = 'SMTP credential password.';
       } else {
         custom.classList.add('hidden');
+        userLabel.innerText = 'SMTP Username';
+        userInput.placeholder = 'alex@trycompany.com';
+        passLabel.innerText = 'App Password / Password';
+        passHint.innerHTML = 'For Google, use a 16-character <b>App Password</b>.';
       }
     }
 

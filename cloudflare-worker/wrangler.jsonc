@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "openexplee-cf-mailer",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-05-20",
+  "compatibility_flags": ["nodejs_compat"],
+  "send_email": [
+    {
+      "name": "EMAIL"
+    }
+  ],
+  "vars": {
+    "FORWARD_TO_EMAIL": "vikash@viktron.ai"
+  }
+}

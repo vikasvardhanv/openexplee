@@ -9,7 +9,7 @@ from app.config import settings
 from app.api.campaigns import router as campaigns_router
 from app.api.leads import router as leads_router
 from app.api.accounts import router as inboxes_router
-from app.api.settings import router as settings_router
+from app.api.settings import router as settings_router, load_persisted_settings
 from app.api.stats import router as stats_router
 from app.api.cloudflare import router as cloudflare_router
 
@@ -18,7 +18,8 @@ from app.api.cloudflare import router as cloudflare_router
 async def lifespan(app: FastAPI):
     # Initialize SQLite schema and tables
     await init_db()
-    print("[OpenExplee] Database initialized successfully.")
+    await load_persisted_settings()
+    print("[OpenExplee] Database & persisted settings initialized successfully.")
     yield
 
 

@@ -115,6 +115,33 @@ Respond in valid JSON with exactly two fields:
             except Exception as e:
                 print(f"[Copywriter] OpenAI-compatible error: {e}")
 
+    # 3. Anthropic Claude
+    if provider == "anthropic":
+        key = api_key or settings.anthropic_api_key
+        if key:
+            try:
+                async with httpx.AsyncClient(timeout=25.0) as client:
+                    resp = await client.post(
+                        "https://api.anthropic.com/v1/messages",
+                        headers={
+                            "x-api-key": key,
+                            "anthropic-version": "2023-06-01",
+                            "Content-Type": "application/json",
+                        },
+                        json={
+                            "model": "claude-3-5-haiku-latest",
+                            "max_tokens": 512,
+                            "messages": [{"role": "user", "content": prompt}],
+                        },
+                    )
+                    if resp.status_code == 200:
+                        content = resp.json()["content"][0]["text"]
+                        m = re.search(r"\{.*\}", content, re.DOTALL)
+                        if m:
+                            return json.loads(m.group(0))
+            except Exception as e:
+                print(f"[Copywriter] Anthropic error: {e}")
+
     # Fallback Smart Dynamic Template
     subject = f"question regarding {company_name}"
     body = (
