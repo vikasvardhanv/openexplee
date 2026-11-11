@@ -11,6 +11,7 @@ from app.api.leads import router as leads_router
 from app.api.accounts import router as inboxes_router
 from app.api.settings import router as settings_router
 from app.api.stats import router as stats_router
+from app.api.cloudflare import router as cloudflare_router
 
 
 @asynccontextmanager
@@ -43,6 +44,7 @@ app.include_router(leads_router)
 app.include_router(inboxes_router)
 app.include_router(settings_router)
 app.include_router(stats_router)
+app.include_router(cloudflare_router)
 
 # Mount Static Files
 static_dir = os.path.join(os.path.dirname(__file__), "static")

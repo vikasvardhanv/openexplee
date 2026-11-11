@@ -6,8 +6,18 @@ from app.engine.discovery import discover_leads_for_icp
 from app.engine.verifier import verify_email_smtp
 from app.engine.copywriter import generate_cold_email
 from app.engine.sequencer import dispatch_campaign_batch
+from app.engine.analyzer import analyze_my_product
 
 router = APIRouter(prefix="/api/campaigns", tags=["campaigns"])
+
+
+class ProductAnalyzeRequest(BaseModel):
+    url: str
+
+
+@router.post("/analyze-product")
+async def analyze_product_endpoint(req: ProductAnalyzeRequest):
+    return await analyze_my_product(req.url)
 
 
 class CampaignCreate(BaseModel):

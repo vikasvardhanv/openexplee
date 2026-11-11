@@ -193,8 +193,19 @@
             <span>Create New ICP Discovery Campaign</span>
           </h2>
           <p class="text-slate-400 text-sm mt-1">
-            Describe your target customer in plain English. OpenExplee will search the web, scrape matching company sites, extract decision-makers, verify their corporate mailboxes, and draft personalized outreach.
+            Enter your product website URL (like Explee does) to auto-extract your value proposition and target ICPs, or describe your target customer in plain English.
           </p>
+        </div>
+
+        <!-- Auto-Analyze My Company URL Banner (Like Explee) -->
+        <div class="mt-6 p-4 rounded-xl bg-indigo-950/40 border border-indigo-500/30 flex flex-col sm:flex-row items-center gap-3">
+          <div class="flex-1 w-full">
+            <label class="block text-[11px] font-bold uppercase text-indigo-300 mb-1">Auto-Extract ICP from your Website (Like Explee)</label>
+            <input type="url" id="analyze-website-input" value="https://viktron.ai" placeholder="https://yourcompany.com" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-400">
+          </div>
+          <button type="button" onclick="handleAnalyzeWebsite()" id="btn-analyze-site" class="w-full sm:w-auto mt-2 sm:mt-5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/30 whitespace-nowrap">
+            <i data-lucide="cpu" class="w-3.5 h-3.5"></i> Auto-Analyze Product
+          </button>
         </div>
 
         <form id="form-create-campaign" onsubmit="handleCreateCampaign(event)" class="mt-6 space-y-4 max-w-3xl">
@@ -360,6 +371,34 @@
 
         <!-- Inboxes & DNS Deliverability Checker -->
         <div class="lg:col-span-2 space-y-6">
+          <!-- Cloudflare API 1-Click Domain Setup -->
+          <div class="glass-panel p-6 rounded-2xl border border-orange-500/20">
+            <h3 class="text-sm font-bold text-white flex items-center justify-between">
+              <span class="flex items-center gap-2"><i data-lucide="cloud-lightning" class="w-4 h-4 text-orange-400"></i> Cloudflare API Automation (1-Click DNS & Routing)</span>
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">Connect your Cloudflare API token to automatically configure SPF, DMARC, MX, and forward all replies to <b>vikash@viktron.ai</b>.</p>
+            
+            <div class="space-y-3 mt-4">
+              <div class="flex gap-2">
+                <input type="password" id="cf-api-token-input" placeholder="Cloudflare API Token" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                <button type="button" onclick="handleFetchCloudflareZones()" class="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white text-xs font-semibold rounded-xl transition whitespace-nowrap">
+                  Fetch Domains
+                </button>
+              </div>
+
+              <div id="cf-domain-select-container" class="hidden space-y-3 pt-2 border-t border-slate-800">
+                <div class="flex flex-col sm:flex-row gap-2">
+                  <select id="cf-zone-select" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"></select>
+                  <button type="button" onclick="handleRunCloudflareSetup()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl transition whitespace-nowrap">
+                    Auto-Configure SPF, MX & Forwarding
+                  </button>
+                </div>
+              </div>
+
+              <div id="cf-setup-result" class="hidden p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300"></div>
+            </div>
+          </div>
+
           <!-- DNS Firewall & Deliverability Checker -->
           <div class="glass-panel p-6 rounded-2xl">
             <h3 class="text-sm font-bold text-white flex items-center justify-between">
@@ -865,6 +904,103 @@
       });
       if (res.ok) {
         showToast('Settings saved successfully!');
+      }
+    }
+
+    async function handleAnalyzeWebsite() {
+      const url = document.getElementById('analyze-website-input').value.trim();
+      if (!url) return;
+      const btn = document.getElementById('btn-analyze-site');
+      btn.innerHTML = `<span class="animate-spin mr-1">&orarr;</span> Scraping & Extracting ICPs...`;
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/campaigns/analyze-product', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+        const data = await res.json();
+        
+        if (data.value_proposition) {
+          document.getElementById('camp-value').value = data.value_proposition;
+        }
+        if (data.target_icps && data.target_icps.length > 0) {
+          const firstIcp = data.target_icps[0];
+          document.getElementById('camp-name').value = `${firstIcp.campaign_name} (${data.product_name.split('|')[0].trim()})`;
+          document.getElementById('camp-icp').value = firstIcp.icp_query;
+          showToast(`Extracted ${data.target_icps.length} ICP segments from ${url}! Form pre-filled.`, 'success');
+        }
+      } catch (err) {
+        showToast('Error analyzing product website', 'error');
+      } finally {
+        btn.innerHTML = `<i data-lucide="cpu" class="w-3.5 h-3.5"></i> Auto-Analyze Product`;
+        btn.disabled = false;
+        lucide.createIcons();
+      }
+    }
+
+    let globalCfZones = [];
+
+    async function handleFetchCloudflareZones() {
+      const token = document.getElementById('cf-api-token-input').value.trim();
+      if (!token) return showToast('Please enter your Cloudflare API token', 'error');
+
+      showToast('Connecting to Cloudflare API...');
+      try {
+        const res = await fetch('/api/cloudflare/zones', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ api_token: token })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          return showToast(err.detail || 'Failed to authenticate with Cloudflare', 'error');
+        }
+        globalCfZones = await res.json();
+        const select = document.getElementById('cf-zone-select');
+        select.innerHTML = globalCfZones.map(z => `<option value="${z.id}" data-name="${z.name}">${z.name} (${z.status})</option>`).join('');
+        document.getElementById('cf-domain-select-container').classList.remove('hidden');
+        showToast(`Found ${globalCfZones.length} domains in your Cloudflare account!`, 'success');
+      } catch (err) {
+        showToast('Failed to connect to Cloudflare', 'error');
+      }
+    }
+
+    async function handleRunCloudflareSetup() {
+      const token = document.getElementById('cf-api-token-input').value.trim();
+      const select = document.getElementById('cf-zone-select');
+      const zoneId = select.value;
+      const domainName = select.options[select.selectedIndex].getAttribute('data-name');
+      const resBox = document.getElementById('cf-setup-result');
+
+      resBox.className = 'p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300';
+      resBox.innerHTML = `<span>Configuring SPF, DMARC, MX, and forwarding for <b>${domainName}</b> via Cloudflare API...</span>`;
+      resBox.classList.remove('hidden');
+
+      try {
+        const res = await fetch('/api/cloudflare/setup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            api_token: token,
+            zone_id: zoneId,
+            domain_name: domainName,
+            forward_to_email: 'vikash@viktron.ai',
+            redirect_target_url: 'https://viktron.ai'
+          })
+        });
+        const data = await res.json();
+        resBox.innerHTML = `
+          <div class="font-bold text-emerald-400 mb-1">Cloudflare Domain Configured Successfully!</div>
+          <div class="text-[11px] font-mono space-y-0.5 text-slate-300">
+            ${data.records_created.map(r => `<div>&bull; ${r}</div>`).join('')}
+          </div>
+          ${data.errors.length ? `<div class="text-[10px] text-amber-400 mt-1">${data.errors.join('<br>')}</div>` : ''}
+        `;
+        showToast(`Configured ${domainName} on Cloudflare!`);
+      } catch (err) {
+        showToast('Cloudflare automation failed', 'error');
       }
     }
 
