@@ -100,6 +100,20 @@ async def init_db():
         );
         """)
 
+        # Safe Schema Migrations for existing DBs
+        for table, col, col_type in [
+            ("campaigns", "reply_to_email", "TEXT"),
+            ("campaigns", "cc_email", "TEXT"),
+            ("campaigns", "hot_leads_count", "INTEGER DEFAULT 0"),
+            ("leads", "is_hot_lead", "BOOLEAN DEFAULT 0"),
+            ("inboxes", "reply_to", "TEXT"),
+            ("inboxes", "cc_email", "TEXT")
+        ]:
+            try:
+                await db.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_type};")
+            except Exception:
+                pass
+
         await db.commit()
 
 
