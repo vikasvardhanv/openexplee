@@ -22,8 +22,11 @@ async def init_db():
             target_industry TEXT,
             status TEXT DEFAULT 'draft',
             value_proposition TEXT,
+            reply_to_email TEXT,
+            cc_email TEXT,
             total_leads INTEGER DEFAULT 0,
             sent_count INTEGER DEFAULT 0,
+            hot_leads_count INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """)
@@ -46,6 +49,7 @@ async def init_db():
             personalized_subject TEXT,
             personalized_body TEXT,
             status TEXT DEFAULT 'discovered',
+            is_hot_lead BOOLEAN DEFAULT 0,
             sent_at TIMESTAMP,
             sent_from_inbox TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -63,6 +67,8 @@ async def init_db():
             smtp_port INTEGER NOT NULL DEFAULT 587,
             smtp_user TEXT NOT NULL,
             smtp_password TEXT NOT NULL,
+            reply_to TEXT,
+            cc_email TEXT,
             use_tls BOOLEAN DEFAULT 1,
             daily_quota INTEGER DEFAULT 35,
             sent_today INTEGER DEFAULT 0,

@@ -16,6 +16,8 @@ class InboxCreate(BaseModel):
     smtp_port: Optional[int] = 587
     smtp_user: str
     smtp_password: str
+    reply_to: Optional[str] = None
+    cc_email: Optional[str] = None
     daily_quota: Optional[int] = 35
 
 
@@ -26,7 +28,7 @@ class CheckDnsRequest(BaseModel):
 @router.get("")
 async def list_inboxes():
     conn = await get_db_connection()
-    cursor = await conn.execute("SELECT id, email, display_name, provider, smtp_host, smtp_port, daily_quota, sent_today, last_sent_at, status, health_score, error_message, created_at FROM inboxes ORDER BY id DESC")
+    cursor = await conn.execute("SELECT id, email, display_name, provider, smtp_host, smtp_port, reply_to, cc_email, daily_quota, sent_today, last_sent_at, status, health_score, error_message, created_at FROM inboxes ORDER BY id DESC")
     rows = await cursor.fetchall()
     await conn.close()
     return [dict(r) for r in rows]
@@ -56,11 +58,11 @@ async def create_inbox(req: InboxCreate):
         cursor = await conn.execute("""
             INSERT INTO inboxes (
                 email, display_name, provider, smtp_host, smtp_port,
-                smtp_user, smtp_password, daily_quota, status, health_score
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', 100)
+                smtp_user, smtp_password, reply_to, cc_email, daily_quota, status, health_score
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 100)
         """, (
             req.email, req.display_name, req.provider, smtp_host, smtp_port,
-            req.smtp_user, req.smtp_password, req.daily_quota
+            req.smtp_user, req.smtp_password, req.reply_to, req.cc_email, req.daily_quota
         ))
         inbox_id = cursor.lastrowid
         await conn.commit()

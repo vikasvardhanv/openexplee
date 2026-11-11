@@ -24,6 +24,13 @@ async def get_dashboard_stats():
     cur = await conn.execute("SELECT COUNT(*) FROM leads WHERE status = 'sent'")
     emails_sent = (await cur.fetchone())[0]
 
+    # Hot Leads (replied or qualified)
+    cur = await conn.execute("SELECT COUNT(*) FROM leads WHERE is_hot_lead = 1 OR status = 'replied'")
+    hot_leads = (await cur.fetchone())[0]
+
+    # Money Saved ($0.04 Explee toll per email eliminated!)
+    money_saved = round(emails_sent * 0.04, 2)
+
     # Active inboxes
     cur = await conn.execute("SELECT COUNT(*), AVG(health_score) FROM inboxes WHERE status = 'active'")
     inbox_row = await cur.fetchone()
@@ -37,6 +44,8 @@ async def get_dashboard_stats():
         "total_leads": total_leads,
         "verified_leads": verified_leads,
         "emails_sent": emails_sent,
+        "hot_leads": hot_leads,
+        "money_saved": money_saved,
         "active_inboxes": active_inboxes,
         "avg_health_score": avg_health
     }

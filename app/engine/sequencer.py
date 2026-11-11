@@ -47,6 +47,12 @@ async def send_single_email(
     msg["Subject"] = clean_subject
     msg["Date"] = formatdate(localtime=True)
     msg["Message-ID"] = make_msgid(domain=inbox["email"].split("@")[-1])
+
+    # CC & Reply-To Routing (e.g. your primary vikash@viktron.ai email)
+    if inbox.get("reply_to"):
+        msg["Reply-To"] = inbox["reply_to"]
+    if inbox.get("cc_email"):
+        msg["Cc"] = inbox["cc_email"]
     
     # Unsubscribe header for cold outreach compliance
     unsubscribe_mail = f"mailto:unsubscribe@{inbox['email'].split('@')[-1]}?subject=Unsubscribe"

@@ -97,42 +97,60 @@
         </div>
       </div>
 
-      <!-- KPI Metrics Cards -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-        <div class="glass-panel p-5 rounded-2xl">
-          <div class="flex items-center justify-between text-slate-400 mb-2">
-            <span class="text-xs font-semibold uppercase tracking-wider">Total Leads</span>
+      <!-- KPI Metrics Cards (Replicating Explee's Core Live Tracking) -->
+      <div class="grid grid-cols-2 md:grid-cols-6 gap-3 sm:gap-4">
+        <div class="glass-panel p-4 rounded-2xl">
+          <div class="flex items-center justify-between text-slate-400 mb-1">
+            <span class="text-[11px] font-semibold uppercase tracking-wider">Total Leads</span>
             <i data-lucide="target" class="w-4 h-4 text-indigo-400"></i>
           </div>
-          <div id="metric-leads" class="text-3xl font-extrabold text-white">0</div>
-          <p class="text-xs text-slate-500 mt-2">Discovered from web crawlers</p>
+          <div id="metric-leads" class="text-2xl font-extrabold text-white">0</div>
+          <p class="text-[10px] text-slate-500 mt-1">From web crawlers</p>
         </div>
 
-        <div class="glass-panel p-5 rounded-2xl">
-          <div class="flex items-center justify-between text-slate-400 mb-2">
-            <span class="text-xs font-semibold uppercase tracking-wider">Verified Deliverable</span>
+        <div class="glass-panel p-4 rounded-2xl">
+          <div class="flex items-center justify-between text-slate-400 mb-1">
+            <span class="text-[11px] font-semibold uppercase tracking-wider">Deliverable</span>
             <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
           </div>
-          <div id="metric-verified" class="text-3xl font-extrabold text-emerald-400">0</div>
-          <p class="text-xs text-slate-500 mt-2">Passed MX + SMTP checks</p>
+          <div id="metric-verified" class="text-2xl font-extrabold text-emerald-400">0</div>
+          <p class="text-[10px] text-slate-500 mt-1">Passed MX + SMTP</p>
         </div>
 
-        <div class="glass-panel p-5 rounded-2xl">
-          <div class="flex items-center justify-between text-slate-400 mb-2">
-            <span class="text-xs font-semibold uppercase tracking-wider">Outreach Sent</span>
+        <div class="glass-panel p-4 rounded-2xl">
+          <div class="flex items-center justify-between text-slate-400 mb-1">
+            <span class="text-[11px] font-semibold uppercase tracking-wider">Emails Sent</span>
             <i data-lucide="send" class="w-4 h-4 text-violet-400"></i>
           </div>
-          <div id="metric-sent" class="text-3xl font-extrabold text-violet-400">0</div>
-          <p class="text-xs text-slate-500 mt-2">Dispatched across inboxes</p>
+          <div id="metric-sent" class="text-2xl font-extrabold text-violet-400">0</div>
+          <p class="text-[10px] text-slate-500 mt-1">Dispatched</p>
         </div>
 
-        <div class="glass-panel p-5 rounded-2xl">
-          <div class="flex items-center justify-between text-slate-400 mb-2">
-            <span class="text-xs font-semibold uppercase tracking-wider">Inbox Health Score</span>
-            <i data-lucide="activity" class="w-4 h-4 text-amber-400"></i>
+        <div class="glass-panel p-4 rounded-2xl border border-amber-500/30">
+          <div class="flex items-center justify-between text-slate-400 mb-1">
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-amber-300">Hot Leads 🔥</span>
+            <i data-lucide="flame" class="w-4 h-4 text-amber-400"></i>
           </div>
-          <div id="metric-health" class="text-3xl font-extrabold text-amber-400">100%</div>
-          <p class="text-xs text-slate-500 mt-2">Warmup & sender reputation</p>
+          <div id="metric-hot" class="text-2xl font-extrabold text-amber-400">0</div>
+          <p class="text-[10px] text-slate-400 mt-1">Replies & interest</p>
+        </div>
+
+        <div class="glass-panel p-4 rounded-2xl border border-emerald-500/20">
+          <div class="flex items-center justify-between text-slate-400 mb-1">
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-emerald-400">Explee Saved</span>
+            <i data-lucide="dollar-sign" class="w-4 h-4 text-emerald-400"></i>
+          </div>
+          <div id="metric-saved" class="text-2xl font-extrabold text-emerald-400">$0.00</div>
+          <p class="text-[10px] text-slate-400 mt-1">$0.04/email toll eliminated</p>
+        </div>
+
+        <div class="glass-panel p-4 rounded-2xl">
+          <div class="flex items-center justify-between text-slate-400 mb-1">
+            <span class="text-[11px] font-semibold uppercase tracking-wider">Health</span>
+            <i data-lucide="activity" class="w-4 h-4 text-indigo-400"></i>
+          </div>
+          <div id="metric-health" class="text-2xl font-extrabold text-indigo-300">100%</div>
+          <p class="text-[10px] text-slate-500 mt-1">Warmup reputation</p>
         </div>
       </div>
 
@@ -317,6 +335,18 @@
             </div>
 
             <div>
+              <label class="block text-xs uppercase text-slate-400 font-semibold mb-1">Reply-To Address (Your Real Inbox)</label>
+              <input type="email" id="inbox-replyto" placeholder="e.g. vikash@viktron.ai" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+              <span class="text-[11px] text-slate-500 mt-0.5 block">Prospect replies go directly here.</span>
+            </div>
+
+            <div>
+              <label class="block text-xs uppercase text-slate-400 font-semibold mb-1">Master Notification CC Email</label>
+              <input type="email" id="inbox-cc" placeholder="e.g. vikash@viktron.ai" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+              <span class="text-[11px] text-slate-500 mt-0.5 block">Automatically CC'd on every outbound dispatch (like Explee).</span>
+            </div>
+
+            <div>
               <label class="block text-xs uppercase text-slate-400 font-semibold mb-1">Daily Sending Quota</label>
               <input type="number" id="inbox-quota" value="35" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
               <span class="text-[11px] text-slate-500 mt-1 block">Recommended: 30-40 per day to maintain deliverability.</span>
@@ -464,6 +494,8 @@
         document.getElementById('metric-leads').innerText = data.total_leads || 0;
         document.getElementById('metric-verified').innerText = data.verified_leads || 0;
         document.getElementById('metric-sent').innerText = data.emails_sent || 0;
+        if (document.getElementById('metric-hot')) document.getElementById('metric-hot').innerText = data.hot_leads || 0;
+        if (document.getElementById('metric-saved')) document.getElementById('metric-saved').innerText = `$${(data.money_saved || 0).toFixed(2)}`;
         document.getElementById('metric-health').innerText = `${data.avg_health_score || 100}%`;
 
         const campRes = await fetch('/api/campaigns');
@@ -682,6 +714,8 @@
         display_name: document.getElementById('inbox-name').value,
         smtp_user: document.getElementById('inbox-user').value,
         smtp_password: document.getElementById('inbox-pass').value,
+        reply_to: document.getElementById('inbox-replyto')?.value || null,
+        cc_email: document.getElementById('inbox-cc')?.value || null,
         daily_quota: parseInt(document.getElementById('inbox-quota').value) || 35,
         smtp_host: document.getElementById('inbox-host').value || null,
         smtp_port: parseInt(document.getElementById('inbox-port').value) || 587
