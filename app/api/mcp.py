@@ -191,3 +191,4 @@ async def mcp_endpoint(request: Request):
             }
 
     return {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32601, "message": f"Method not found: {method}"}}
+

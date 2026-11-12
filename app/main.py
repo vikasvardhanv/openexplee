@@ -1,3 +1,4 @@
+import asyncio
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -13,6 +14,7 @@ from app.api.settings import router as settings_router, load_persisted_settings
 from app.api.stats import router as stats_router
 from app.api.cloudflare import router as cloudflare_router
 from app.api.mcp import router as mcp_router
+from app.engine.scheduler import run_scheduler_loop
 
 
 @asynccontextmanager
@@ -20,8 +22,16 @@ async def lifespan(app: FastAPI):
     # Initialize SQLite schema and tables
     await init_db()
     await load_persisted_settings()
-    print("[OpenExplee] Database & persisted settings initialized successfully.")
-    yield
+    scheduler_task = asyncio.create_task(run_scheduler_loop(interval_seconds=300))
+    print("[OpenExplee] Database, persisted settings, and follow-up scheduler initialized.")
+    try:
+        yield
+    finally:
+        scheduler_task.cancel()
+        try:
+            await scheduler_task
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(

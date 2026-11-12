@@ -9,6 +9,7 @@ from app.api.mcp import MCP_TOOLS
 from app.config import settings
 from app.engine.sequencer import send_single_email
 from app.engine.verifier import enrich_person_email
+from app.engine.scheduler import reset_daily_inbox_quotas, process_due_followups
 
 
 async def run_checks():
@@ -96,6 +97,12 @@ async def run_checks():
         InboundWebhookPayload(from_email="Nobody <nobody_test_check@invalid.local>", to_email="ck@aspendash.com", subject="Re: Hi")
     )
     assert wb_res["ok"] is True and wb_res["sender"] == "nobody_test_check@invalid.local"
+
+    # 7. Scheduler quota reset & due follow-ups check
+    reset_count = await reset_daily_inbox_quotas()
+    assert isinstance(reset_count, int)
+    due_count = await process_due_followups(limit=0)
+    assert due_count == 0
 
     print("ALL CHECKS PASSED!")
 

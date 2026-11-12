@@ -42,7 +42,15 @@ async def _record_send_success(inbox_id: int, inbox_email: str, lead_id: Optiona
             if lead_id:
                 await cursor.execute("""
                     UPDATE leads 
-                    SET status = 'sent', sent_at = CURRENT_TIMESTAMP, sent_from_inbox = ? 
+                    SET status = 'sent',
+                        sent_at = CURRENT_TIMESTAMP,
+                        sent_from_inbox = ?,
+                        followup_step = COALESCE(followup_step, 0) + 1,
+                        next_followup_at = CASE
+                            WHEN COALESCE(followup_step, 0) = 0 THEN datetime('now', '+3 days')
+                            WHEN COALESCE(followup_step, 0) = 1 THEN datetime('now', '+4 days')
+                            ELSE NULL
+                        END
                     WHERE id = ?
                 """, (inbox_email, lead_id))
 
