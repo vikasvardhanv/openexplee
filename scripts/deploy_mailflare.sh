@@ -39,3 +39,4 @@ npx wrangler secret put CF_TOKEN
 
 echo ""
 echo "Mailflare deployed! Open your deployed Worker URL at /setup to create your admin account and connect your domain."
+

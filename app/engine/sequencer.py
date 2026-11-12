@@ -155,6 +155,37 @@ async def _send_via_smtp(
     await smtp_client.quit()
 
 
+async def _is_suppressed(email: str) -> bool:
+    """Checks if an email or its domain is on the suppression/dedup list."""
+    clean_email = email.strip().lower()
+    domain = clean_email.split("@")[-1] if "@" in clean_email else ""
+    conn = await get_db_connection()
+    try:
+        cur = await conn.execute(
+            "SELECT 1 FROM suppression_list WHERE LOWER(value) IN (?, ?) LIMIT 1",
+            (clean_email, domain),
+        )
+        return (await cur.fetchone()) is not None
+    finally:
+        await conn.close()
+
+
+async def _auto_suppress_bounce(email: str, lead_id: Optional[int], reason: str) -> None:
+    """Adds hard-bounced addresses to the suppression list so future sends never hit them."""
+    clean_email = email.strip().lower()
+    conn = await get_db_connection()
+    try:
+        await conn.execute(
+            "INSERT OR IGNORE INTO suppression_list (entry_type, value, reason) VALUES ('email', ?, ?)",
+            (clean_email, reason[:200]),
+        )
+        if lead_id:
+            await conn.execute("UPDATE leads SET status = 'bounced' WHERE id = ?", (lead_id,))
+        await conn.commit()
+    finally:
+        await conn.close()
+
+
 async def send_single_email(
     inbox: Dict[str, Any],
     to_email: str,
@@ -164,7 +195,11 @@ async def send_single_email(
 ) -> Dict[str, Any]:
     """
     Sends an outbound email via SMTP, Cloudflare Email Worker, or Mailflare API.
+    Enforces suppression checks to keep domain bounce rates near 0%.
     """
+    if await _is_suppressed(to_email):
+        return {"success": False, "inbox_email": inbox["email"], "error": f"Suppressed recipient/domain: {to_email}"}
+
     clean_subject = resolve_spintax(subject)
     clean_body = resolve_spintax(body)
     result = {"success": False, "inbox_email": inbox["email"], "error": None}
@@ -182,7 +217,10 @@ async def send_single_email(
         await _record_send_success(inbox["id"], inbox["email"], lead_id)
 
     except Exception as e:
-        result["error"] = str(e)
+        err_str = str(e)
+        result["error"] = err_str
+        if any(code in err_str.lower() for code in ("550", "551", "553", "554", "user unknown", "no such user")):
+            await _auto_suppress_bounce(to_email, lead_id, f"hard_bounce: {err_str}")
         print(f"[Sequencer] Send failed via {inbox['email']} ({inbox.get('provider')}): {e}")
 
     return result
@@ -191,12 +229,16 @@ async def send_single_email(
 async def dispatch_campaign_batch(campaign_id: int, limit: int = 10) -> Dict[str, Any]:
     """
     Sends queued and verified leads for a given campaign using rotating inboxes.
+    Blocks invalid emails automatically to protect sender domain reputation.
     """
     conn = await get_db_connection()
     async with conn.cursor() as cursor:
         await cursor.execute("""
             SELECT * FROM leads 
-            WHERE campaign_id = ? AND status IN ('enriched', 'queued') AND email IS NOT NULL AND email != ''
+            WHERE campaign_id = ?
+              AND status IN ('enriched', 'queued')
+              AND verification_status != 'invalid'
+              AND email IS NOT NULL AND email != ''
             LIMIT ?
         """, (campaign_id, limit))
         leads = [dict(r) for r in await cursor.fetchall()]

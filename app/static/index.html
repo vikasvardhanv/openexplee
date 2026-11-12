@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -26,7 +27,11 @@
   </script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
     .glass-panel {
       background: rgba(18, 24, 38, 0.75);
       backdrop-filter: blur(12px);
@@ -34,42 +39,52 @@
     }
   </style>
 </head>
+
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
 
   <!-- Navigation Bar -->
   <header class="border-b border-slate-800 bg-slate-900/80 sticky top-0 z-40 backdrop-blur-md">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
       <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+        <div
+          class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
           <i data-lucide="send" class="w-5 h-5 text-white"></i>
         </div>
         <div>
-          <span class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent">OpenExplee</span>
-          <span class="ml-2 text-xs uppercase px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 font-semibold border border-indigo-500/20">Self-Hosted</span>
+          <span
+            class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent">OpenExplee</span>
+          <span
+            class="ml-2 text-xs uppercase px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 font-semibold border border-indigo-500/20">Self-Hosted</span>
         </div>
       </div>
 
       <!-- Navigation Tabs -->
       <nav class="flex space-x-1 sm:space-x-2">
-        <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn px-3 py-2 rounded-lg text-sm font-medium transition text-indigo-400 bg-indigo-500/10">
+        <button onclick="switchTab('dashboard')" id="tab-dashboard"
+          class="tab-btn px-3 py-2 rounded-lg text-sm font-medium transition text-indigo-400 bg-indigo-500/10">
           <i data-lucide="layout-dashboard" class="w-4 h-4 inline mr-1"></i> Dashboard
         </button>
-        <button onclick="switchTab('campaigns')" id="tab-campaigns" class="tab-btn px-3 py-2 rounded-lg text-sm font-medium transition text-slate-400 hover:text-white hover:bg-slate-800">
+        <button onclick="switchTab('campaigns')" id="tab-campaigns"
+          class="tab-btn px-3 py-2 rounded-lg text-sm font-medium transition text-slate-400 hover:text-white hover:bg-slate-800">
           <i data-lucide="sparkles" class="w-4 h-4 inline mr-1"></i> ICP Discovery
         </button>
-        <button onclick="switchTab('leads')" id="tab-leads" class="tab-btn px-3 py-2 rounded-lg text-sm font-medium transition text-slate-400 hover:text-white hover:bg-slate-800">
+        <button onclick="switchTab('leads')" id="tab-leads"
+          class="tab-btn px-3 py-2 rounded-lg text-sm font-medium transition text-slate-400 hover:text-white hover:bg-slate-800">
           <i data-lucide="users" class="w-4 h-4 inline mr-1"></i> Leads & AI Copy
         </button>
-        <button onclick="switchTab('inboxes')" id="tab-inboxes" class="tab-btn px-3 py-2 rounded-lg text-sm font-medium transition text-slate-400 hover:text-white hover:bg-slate-800">
+        <button onclick="switchTab('inboxes')" id="tab-inboxes"
+          class="tab-btn px-3 py-2 rounded-lg text-sm font-medium transition text-slate-400 hover:text-white hover:bg-slate-800">
           <i data-lucide="mail" class="w-4 h-4 inline mr-1"></i> Inboxes & Domains
         </button>
-        <button onclick="switchTab('settings')" id="tab-settings" class="tab-btn px-3 py-2 rounded-lg text-sm font-medium transition text-slate-400 hover:text-white hover:bg-slate-800">
+        <button onclick="switchTab('settings')" id="tab-settings"
+          class="tab-btn px-3 py-2 rounded-lg text-sm font-medium transition text-slate-400 hover:text-white hover:bg-slate-800">
           <i data-lucide="settings" class="w-4 h-4 inline mr-1"></i> Settings
         </button>
       </nav>
 
       <div class="hidden sm:flex items-center space-x-3 text-xs text-slate-400">
-        <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+        <span
+          class="inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span> Engine Online
         </span>
       </div>
@@ -80,17 +95,21 @@
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
 
     <!-- Notification Toast -->
-    <div id="toast" class="hidden fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 border text-sm transition-all"></div>
+    <div id="toast"
+      class="hidden fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 border text-sm transition-all">
+    </div>
 
     <!-- TAB 1: DASHBOARD -->
     <section id="view-dashboard" class="space-y-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 class="text-2xl font-bold text-white tracking-tight">Outreach Performance & Deliverability</h1>
-          <p class="text-slate-400 text-sm mt-1">Real-time health of your self-hosted AI lead discovery & sending engine.</p>
+          <p class="text-slate-400 text-sm mt-1">Real-time health of your self-hosted AI lead discovery & sending
+            engine.</p>
         </div>
         <div class="flex gap-3">
-          <button onclick="switchTab('campaigns')" class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition flex items-center space-x-2 shadow-lg shadow-indigo-600/20">
+          <button onclick="switchTab('campaigns')"
+            class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition flex items-center space-x-2 shadow-lg shadow-indigo-600/20">
             <i data-lucide="plus-circle" class="w-4 h-4"></i>
             <span>New ICP Discovery</span>
           </button>
@@ -193,17 +212,23 @@
             <span>Create New ICP Discovery Campaign</span>
           </h2>
           <p class="text-slate-400 text-sm mt-1">
-            Enter your product website URL (like Explee does) to auto-extract your value proposition and target ICPs, or describe your target customer in plain English.
+            Enter your product website URL (like Explee does) to auto-extract your value proposition and target ICPs, or
+            describe your target customer in plain English.
           </p>
         </div>
 
         <!-- Auto-Analyze My Company URL Banner (Like Explee) -->
-        <div class="mt-6 p-4 rounded-xl bg-indigo-950/40 border border-indigo-500/30 flex flex-col sm:flex-row items-center gap-3">
+        <div
+          class="mt-6 p-4 rounded-xl bg-indigo-950/40 border border-indigo-500/30 flex flex-col sm:flex-row items-center gap-3">
           <div class="flex-1 w-full">
-            <label class="block text-[11px] font-bold uppercase text-indigo-300 mb-1">Auto-Extract ICP from your Website (Like Explee)</label>
-            <input type="url" id="analyze-website-input" value="https://viktron.ai" placeholder="https://yourcompany.com" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-400">
+            <label class="block text-[11px] font-bold uppercase text-indigo-300 mb-1">Auto-Extract ICP from your Website
+              (Like Explee)</label>
+            <input type="url" id="analyze-website-input" value="https://viktron.ai"
+              placeholder="https://yourcompany.com"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-400">
           </div>
-          <button type="button" onclick="handleAnalyzeWebsite()" id="btn-analyze-site" class="w-full sm:w-auto mt-2 sm:mt-5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/30 whitespace-nowrap">
+          <button type="button" onclick="handleAnalyzeWebsite()" id="btn-analyze-site"
+            class="w-full sm:w-auto mt-2 sm:mt-5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/30 whitespace-nowrap">
             <i data-lucide="cpu" class="w-3.5 h-3.5"></i> Auto-Analyze Product
           </button>
         </div>
@@ -211,26 +236,35 @@
         <form id="form-create-campaign" onsubmit="handleCreateCampaign(event)" class="mt-6 space-y-4 max-w-3xl">
           <div>
             <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Campaign Name</label>
-            <input type="text" id="camp-name" required placeholder="e.g. US B2B SaaS Founders Q2" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
+            <input type="text" id="camp-name" required placeholder="e.g. US B2B SaaS Founders Q2"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
           </div>
 
           <div>
-            <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Natural Language ICP (Target Audience)</label>
-            <textarea id="camp-icp" rows="2" required placeholder="e.g. B2B SaaS companies in the United States building developer tools or developer APIs" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"></textarea>
+            <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Natural Language ICP (Target
+              Audience)</label>
+            <textarea id="camp-icp" rows="2" required
+              placeholder="e.g. B2B SaaS companies in the United States building developer tools or developer APIs"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"></textarea>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Target Industry / Niche</label>
-              <input type="text" id="camp-industry" value="Developer Tools & SaaS" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
+              <input type="text" id="camp-industry" value="Developer Tools & SaaS"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
             </div>
             <div>
-              <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Your Product / Value Proposition</label>
-              <input type="text" id="camp-value" required placeholder="e.g. Automated CI/CD test acceleration cutting build times by 60%" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
+              <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Your Product / Value
+                Proposition</label>
+              <input type="text" id="camp-value" required
+                placeholder="e.g. Automated CI/CD test acceleration cutting build times by 60%"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
             </div>
           </div>
 
-          <button type="submit" class="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition flex items-center space-x-2 shadow-lg shadow-indigo-600/30">
+          <button type="submit"
+            class="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition flex items-center space-x-2 shadow-lg shadow-indigo-600/30">
             <i data-lucide="search" class="w-4 h-4"></i>
             <span>Launch AI Discovery & Enrichment</span>
           </button>
@@ -251,13 +285,16 @@
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 class="text-xl font-bold text-white tracking-tight">Leads & AI Personalization Studio</h2>
-          <p class="text-slate-400 text-sm">Review scraped prospects, test email deliverability, and refine AI pitches.</p>
+          <p class="text-slate-400 text-sm">Review scraped prospects, test email deliverability, and refine AI pitches.
+          </p>
         </div>
 
         <!-- Live Email Verification Widget -->
         <div class="flex items-center gap-2">
-          <input type="email" id="test-verify-input" placeholder="test@targetdomain.com" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-56">
-          <button onclick="handleQuickVerify()" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5">
+          <input type="email" id="test-verify-input" placeholder="test@targetdomain.com"
+            class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-56">
+          <button onclick="handleQuickVerify()"
+            class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5">
             <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Test Mailbox
           </button>
         </div>
@@ -282,7 +319,8 @@
             </thead>
             <tbody id="leads-table-body" class="divide-y divide-slate-800/60">
               <tr>
-                <td colspan="6" class="py-6 text-center text-slate-500">No leads discovered yet. Launch an ICP campaign first!</td>
+                <td colspan="6" class="py-6 text-center text-slate-500">No leads discovered yet. Launch an ICP campaign
+                  first!</td>
               </tr>
             </tbody>
           </table>
@@ -305,7 +343,8 @@
           <form id="form-add-inbox" onsubmit="handleAddInbox(event)" class="space-y-3">
             <div>
               <label class="block text-xs uppercase text-slate-400 font-semibold mb-1">Provider</label>
-              <select id="inbox-provider" onchange="toggleProviderSettings()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+              <select id="inbox-provider" onchange="toggleProviderSettings()"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
                 <option value="google">Google Workspace (Gmail)</option>
                 <option value="outlook">Microsoft 365 (Office 365)</option>
                 <option value="cf_worker">Cloudflare Email Worker (send_email)</option>
@@ -317,55 +356,73 @@
 
             <div>
               <label class="block text-xs uppercase text-slate-400 font-semibold mb-1">Email Address</label>
-              <input type="email" id="inbox-email" required placeholder="alex@trycompany.com" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+              <input type="email" id="inbox-email" required placeholder="alex@trycompany.com"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
             </div>
 
             <div>
               <label class="block text-xs uppercase text-slate-400 font-semibold mb-1">Sender Name</label>
-              <input type="text" id="inbox-name" required placeholder="Alex Morgan" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+              <input type="text" id="inbox-name" required placeholder="Alex Morgan"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
             </div>
 
             <div id="custom-smtp-fields" class="hidden space-y-3">
               <div>
-                <label id="label-inbox-host" class="block text-xs uppercase text-slate-400 font-semibold mb-1">SMTP Host</label>
-                <input type="text" id="inbox-host" placeholder="smtp.yourdomain.com" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+                <label id="label-inbox-host" class="block text-xs uppercase text-slate-400 font-semibold mb-1">SMTP
+                  Host</label>
+                <input type="text" id="inbox-host" placeholder="smtp.yourdomain.com"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
               </div>
               <div id="inbox-port-wrap">
                 <label class="block text-xs uppercase text-slate-400 font-semibold mb-1">SMTP Port</label>
-                <input type="number" id="inbox-port" value="587" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+                <input type="number" id="inbox-port" value="587"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
               </div>
             </div>
 
             <div>
-              <label id="label-inbox-user" class="block text-xs uppercase text-slate-400 font-semibold mb-1">SMTP Username</label>
-              <input type="text" id="inbox-user" required placeholder="alex@trycompany.com" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+              <label id="label-inbox-user" class="block text-xs uppercase text-slate-400 font-semibold mb-1">SMTP
+                Username</label>
+              <input type="text" id="inbox-user" required placeholder="alex@trycompany.com"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
             </div>
 
             <div>
-              <label id="label-inbox-pass" class="block text-xs uppercase text-slate-400 font-semibold mb-1">App Password / Password</label>
-              <input type="password" id="inbox-pass" required placeholder="••••••••••••" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
-              <span id="hint-inbox-pass" class="text-[11px] text-slate-500 mt-1 block">For Google, use a 16-character <b>App Password</b>.</span>
+              <label id="label-inbox-pass" class="block text-xs uppercase text-slate-400 font-semibold mb-1">App
+                Password / Password</label>
+              <input type="password" id="inbox-pass" required placeholder="••••••••••••"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+              <span id="hint-inbox-pass" class="text-[11px] text-slate-500 mt-1 block">For Google, use a 16-character
+                <b>App Password</b>.</span>
             </div>
 
             <div>
-              <label class="block text-xs uppercase text-slate-400 font-semibold mb-1">Reply-To Address (Your Real Inbox)</label>
-              <input type="email" id="inbox-replyto" placeholder="e.g. vikash@viktron.ai" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+              <label class="block text-xs uppercase text-slate-400 font-semibold mb-1">Reply-To Address (Your Real
+                Inbox)</label>
+              <input type="email" id="inbox-replyto" placeholder="e.g. vikash@viktron.ai"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
               <span class="text-[11px] text-slate-500 mt-0.5 block">Prospect replies go directly here.</span>
             </div>
 
             <div>
-              <label class="block text-xs uppercase text-slate-400 font-semibold mb-1">Master Notification CC Email</label>
-              <input type="email" id="inbox-cc" placeholder="e.g. vikash@viktron.ai" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
-              <span class="text-[11px] text-slate-500 mt-0.5 block">Automatically CC'd on every outbound dispatch (like Explee).</span>
+              <label class="block text-xs uppercase text-slate-400 font-semibold mb-1">Master Notification CC
+                Email</label>
+              <input type="email" id="inbox-cc" placeholder="e.g. vikash@viktron.ai"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+              <span class="text-[11px] text-slate-500 mt-0.5 block">Automatically CC'd on every outbound dispatch (like
+                Explee).</span>
             </div>
 
             <div>
               <label class="block text-xs uppercase text-slate-400 font-semibold mb-1">Daily Sending Quota</label>
-              <input type="number" id="inbox-quota" value="35" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
-              <span class="text-[11px] text-slate-500 mt-1 block">Recommended: 30-40 per day to maintain deliverability.</span>
+              <input type="number" id="inbox-quota" value="35"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+              <span class="text-[11px] text-slate-500 mt-1 block">Recommended: 30-40 per day to maintain
+                deliverability.</span>
             </div>
 
-            <button type="submit" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition">
+            <button type="submit"
+              class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition">
               Add & Authenticate Inbox
             </button>
           </form>
@@ -376,45 +433,57 @@
           <!-- Cloudflare API 1-Click Domain Setup -->
           <div class="glass-panel p-6 rounded-2xl border border-orange-500/20">
             <h3 class="text-sm font-bold text-white flex items-center justify-between">
-              <span class="flex items-center gap-2"><i data-lucide="cloud-lightning" class="w-4 h-4 text-orange-400"></i> Cloudflare API Automation (1-Click DNS & Routing)</span>
+              <span class="flex items-center gap-2"><i data-lucide="cloud-lightning"
+                  class="w-4 h-4 text-orange-400"></i> Cloudflare API Automation (1-Click DNS & Routing)</span>
             </h3>
-            <p class="text-xs text-slate-400 mt-1">Connect your Cloudflare API token to automatically configure SPF, DMARC, MX, and forward all replies to <b>vikash@viktron.ai</b>.</p>
-            
+            <p class="text-xs text-slate-400 mt-1">Connect your Cloudflare API token to automatically configure SPF,
+              DMARC, MX, and forward all replies to <b>vikash@viktron.ai</b>.</p>
+
             <div class="space-y-3 mt-4">
               <div class="flex gap-2">
-                <input type="password" id="cf-api-token-input" placeholder="Cloudflare API Token" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
-                <button type="button" onclick="handleFetchCloudflareZones()" class="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white text-xs font-semibold rounded-xl transition whitespace-nowrap">
+                <input type="password" id="cf-api-token-input" placeholder="Cloudflare API Token"
+                  class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                <button type="button" onclick="handleFetchCloudflareZones()"
+                  class="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white text-xs font-semibold rounded-xl transition whitespace-nowrap">
                   Fetch Domains
                 </button>
               </div>
 
               <div id="cf-domain-select-container" class="hidden space-y-3 pt-2 border-t border-slate-800">
                 <div class="flex flex-col sm:flex-row gap-2">
-                  <select id="cf-zone-select" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"></select>
-                  <button type="button" onclick="handleRunCloudflareSetup()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl transition whitespace-nowrap">
+                  <select id="cf-zone-select"
+                    class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"></select>
+                  <button type="button" onclick="handleRunCloudflareSetup()"
+                    class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl transition whitespace-nowrap">
                     Auto-Configure SPF, MX & Forwarding
                   </button>
                 </div>
               </div>
 
-              <div id="cf-setup-result" class="hidden p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300"></div>
+              <div id="cf-setup-result"
+                class="hidden p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300"></div>
             </div>
           </div>
 
           <!-- DNS Firewall & Deliverability Checker -->
           <div class="glass-panel p-6 rounded-2xl">
             <h3 class="text-sm font-bold text-white flex items-center justify-between">
-              <span class="flex items-center gap-2"><i data-lucide="shield" class="w-4 h-4 text-emerald-400"></i> Domain Deliverability Firewall (SPF / DKIM / DMARC)</span>
+              <span class="flex items-center gap-2"><i data-lucide="shield" class="w-4 h-4 text-emerald-400"></i> Domain
+                Deliverability Firewall (SPF / DKIM / DMARC)</span>
             </h3>
-            <p class="text-xs text-slate-400 mt-1">Audit any secondary outreach domain to verify its mail records before sending.</p>
-            
+            <p class="text-xs text-slate-400 mt-1">Audit any secondary outreach domain to verify its mail records before
+              sending.</p>
+
             <div class="flex gap-2 mt-4">
-              <input type="text" id="dns-domain-input" placeholder="tryyourcompany.com" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
-              <button onclick="handleAuditDns()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl transition">
+              <input type="text" id="dns-domain-input" placeholder="tryyourcompany.com"
+                class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+              <button onclick="handleAuditDns()"
+                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl transition">
                 Audit Records
               </button>
             </div>
-            <div id="dns-audit-result" class="hidden mt-4 p-4 rounded-xl bg-slate-900 border border-slate-800 text-xs space-y-2"></div>
+            <div id="dns-audit-result"
+              class="hidden mt-4 p-4 rounded-xl bg-slate-900 border border-slate-800 text-xs space-y-2"></div>
           </div>
 
           <!-- Connected Inboxes Table -->
@@ -447,12 +516,14 @@
     <section id="view-settings" class="hidden space-y-6 max-w-3xl">
       <div class="glass-panel p-6 sm:p-8 rounded-2xl">
         <h2 class="text-xl font-bold text-white mb-1">AI Engine & Search Configuration</h2>
-        <p class="text-slate-400 text-sm mb-6">Choose your preferred LLM provider for cold outreach drafting and ICP analysis.</p>
+        <p class="text-slate-400 text-sm mb-6">Choose your preferred LLM provider for cold outreach drafting and ICP
+          analysis.</p>
 
         <form id="form-settings" onsubmit="handleSaveSettings(event)" class="space-y-4">
           <div>
             <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Default AI Provider</label>
-            <select id="settings-provider" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
+            <select id="settings-provider"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
               <option value="gemini">Google Gemini (Recommended - Fast & Cost-Effective)</option>
               <option value="openai">OpenAI (GPT-4o Mini / GPT-4o)</option>
               <option value="anthropic">Anthropic (Claude 3.5 Sonnet / Haiku)</option>
@@ -463,30 +534,37 @@
 
           <div>
             <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Google Gemini API Key</label>
-            <input type="password" id="key-gemini" placeholder="AIzaSy••••••••••••" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
+            <input type="password" id="key-gemini" placeholder="AIzaSy••••••••••••"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
           </div>
 
           <div>
             <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">OpenAI API Key</label>
-            <input type="password" id="key-openai" placeholder="sk-proj-••••••••••••" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
+            <input type="password" id="key-openai" placeholder="sk-proj-••••••••••••"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
           </div>
 
           <div>
             <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Anthropic Claude API Key</label>
-            <input type="password" id="key-anthropic" placeholder="sk-ant-••••••••••••" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
+            <input type="password" id="key-anthropic" placeholder="sk-ant-••••••••••••"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
           </div>
 
           <div>
             <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Local Ollama Base URL</label>
-            <input type="text" id="url-ollama" value="http://localhost:11434" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
+            <input type="text" id="url-ollama" value="http://localhost:11434"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
           </div>
 
           <div>
-            <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Serper Google Search API Key (Optional)</label>
-            <input type="password" id="key-serper" placeholder="Optional - Falls back to free DuckDuckGo" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
+            <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Serper Google Search API Key
+              (Optional)</label>
+            <input type="password" id="key-serper" placeholder="Optional - Falls back to free DuckDuckGo"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
           </div>
 
-          <button type="submit" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition">
+          <button type="submit"
+            class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition">
             Save Settings
           </button>
         </form>
@@ -505,9 +583,8 @@
 
     function showToast(message, type = 'success') {
       const toast = document.getElementById('toast');
-      toast.className = `fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 border text-sm transition-all ${
-        type === 'success' ? 'bg-emerald-950/90 text-emerald-300 border-emerald-800' : 'bg-rose-950/90 text-rose-300 border-rose-800'
-      }`;
+      toast.className = `fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 border text-sm transition-all ${type === 'success' ? 'bg-emerald-950/90 text-emerald-300 border-emerald-800' : 'bg-rose-950/90 text-rose-300 border-rose-800'
+        }`;
       toast.innerHTML = `<span>${message}</span>`;
       toast.classList.remove('hidden');
       setTimeout(() => toast.classList.add('hidden'), 4000);
@@ -552,11 +629,10 @@
             <td class="py-3 px-4 font-semibold text-white">${c.name}</td>
             <td class="py-3 px-4 text-slate-400 truncate max-w-xs">${c.icp_prompt}</td>
             <td class="py-3 px-4">
-              <span class="px-2 py-0.5 rounded text-xs font-semibold ${
-                c.status === 'ready' ? 'bg-emerald-500/10 text-emerald-400' :
-                c.status === 'discovering' ? 'bg-amber-500/10 text-amber-400 animate-pulse' :
-                'bg-slate-800 text-slate-400'
-              }">${c.status.toUpperCase()}</span>
+              <span class="px-2 py-0.5 rounded text-xs font-semibold ${c.status === 'ready' ? 'bg-emerald-500/10 text-emerald-400' :
+            c.status === 'discovering' ? 'bg-amber-500/10 text-amber-400 animate-pulse' :
+              'bg-slate-800 text-slate-400'
+          }">${c.status.toUpperCase()}</span>
             </td>
             <td class="py-3 px-4">${c.total_leads || 0}</td>
             <td class="py-3 px-4 text-indigo-400 font-medium">${c.sent_count || 0}</td>
@@ -684,9 +760,8 @@
               <div class="text-[11px] text-slate-400 truncate mt-0.5">${l.personalized_body || '—'}</div>
             </td>
             <td class="py-3 px-4">
-              <span class="text-xs font-semibold uppercase px-2 py-0.5 rounded ${
-                l.status === 'sent' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-400'
-              }">${l.status}</span>
+              <span class="text-xs font-semibold uppercase px-2 py-0.5 rounded ${l.status === 'sent' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-400'
+          }">${l.status}</span>
             </td>
             <td class="py-3 px-4 text-right">
               <button onclick="handleVerifySingleLead(${l.id}, '${l.email}')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-xs rounded text-slate-200">
@@ -960,7 +1035,7 @@
           body: JSON.stringify({ url })
         });
         const data = await res.json();
-        
+
         if (data.value_proposition) {
           document.getElementById('camp-value').value = data.value_proposition;
         }
@@ -1047,5 +1122,5 @@
     loadDashboard();
   </script>
 </body>
-</html>
 
+</html>

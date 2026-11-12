@@ -44,3 +44,4 @@ OpenExplee supports two Cloudflare Worker integrations for email sending and rep
 3. Open your deployed Mailflare URL at `/setup`, create your admin account, and connect your domain.
 4. Create a mailbox and generate an API key with the `send` scope in **Mailflare Settings &rarr; API keys**.
 5. Open OpenExplee &rarr; **Inboxes & Domains**, choose **Mailflare Workspace API (Cloudflare)**, enter your Mailflare URL, Mailbox ID, and API key, then click **Test SMTP**.
+

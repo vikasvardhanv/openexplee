@@ -149,3 +149,35 @@ async def verify_email_smtp(email: str, timeout: float = 6.0) -> Dict[str, Any]:
 
     return result
 
+
+async def enrich_person_email(first_name: str, last_name: str, domain: str) -> Dict[str, Any]:
+    """
+    Replicates Explee's enrich_email tool for $0: generates corporate email
+    permutations and checks DNS MX + live SMTP handshake to find the best address.
+    """
+    candidates = generate_email_permutations(first_name, last_name, domain)
+    best_fallback: Optional[Dict[str, Any]] = None
+
+    for candidate in candidates:
+        res = await verify_email_smtp(candidate, timeout=5.0)
+        if res["status"] == "verified":
+            return {**res, "candidates_tested": candidates}
+        if res["status"] in ("catch_all", "deliverable") and best_fallback is None:
+            best_fallback = {**res, "candidates_tested": candidates}
+            # Catch-all accepts any address, so no need to probe remaining patterns
+            if res["status"] == "catch_all":
+                return best_fallback
+        if res["mx_host"] is None:
+            # Domain has no MX records at all; stop probing permutations
+            return {**res, "candidates_tested": [candidate]}
+
+    return best_fallback or {
+        "email": candidates[0] if candidates else None,
+        "status": "invalid",
+        "score": 0,
+        "mx_host": None,
+        "is_disposable": False,
+        "details": "No deliverable permutation found.",
+        "candidates_tested": candidates,
+    }
+

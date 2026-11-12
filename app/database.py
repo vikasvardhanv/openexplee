@@ -100,6 +100,17 @@ async def init_db():
         );
         """)
 
+        # Suppression / Deduplication List Table (emails & domains never to contact)
+        await db.execute("""
+        CREATE TABLE IF NOT EXISTS suppression_list (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            entry_type TEXT NOT NULL DEFAULT 'email',
+            value TEXT UNIQUE NOT NULL,
+            reason TEXT DEFAULT 'manual',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+
         # Safe Schema Migrations for existing DBs
         for table, col, col_type in [
             ("campaigns", "reply_to_email", "TEXT"),

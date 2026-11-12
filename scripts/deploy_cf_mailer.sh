@@ -29,3 +29,4 @@ echo "  cd $WORKER_DIR"
 echo "  npx wrangler secret put WORKER_AUTH_TOKEN"
 echo "  # Optional (to mark Hot Leads in OpenExplee on reply):"
 echo "  npx wrangler secret put OPENEXPLEE_WEBHOOK_URL"
+

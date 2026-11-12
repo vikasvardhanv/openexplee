@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 import aiosmtplib
 import httpx
+from app.config import settings
 from app.database import get_db_connection
 from app.engine.warmup import check_domain_dns_health, simulate_warmup_tick
 
@@ -20,6 +21,7 @@ class InboxCreate(BaseModel):
     reply_to: Optional[str] = None
     cc_email: Optional[str] = None
     daily_quota: Optional[int] = 35
+    allow_primary_domain: bool = False
 
 
 class CheckDnsRequest(BaseModel):
@@ -37,6 +39,19 @@ async def list_inboxes():
 
 @router.post("")
 async def create_inbox(req: InboxCreate):
+    # Primary Domain Shield: prevent accidentally sending cold outreach from your main brand domain
+    sender_domain = req.email.split("@")[-1].lower().strip()
+    protected = {d.strip().lower() for d in settings.protected_primary_domains.split(",") if d.strip()}
+    if sender_domain in protected and not req.allow_primary_domain:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Primary domain '{sender_domain}' is protected to keep your main brand reputation safe! "
+                f"Use a secondary lookalike domain (e.g. try{sender_domain}) as Sender Email, "
+                f"and put your real email in Reply-To / Master CC."
+            ),
+        )
+
     # Auto-fill standard provider SMTP hosts
     smtp_host = req.smtp_host
     smtp_port = req.smtp_port or 587

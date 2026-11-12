@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     serper_api_key: Optional[str] = None
 
     # Sending & Deliverability Safeguards
+    protected_primary_domains: str = "viktron.ai"
     max_daily_sends_per_inbox: int = 35
     min_delay_seconds: int = 120
     max_delay_seconds: int = 300

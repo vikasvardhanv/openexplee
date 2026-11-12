@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 from app.database import get_db_connection
-from app.engine.verifier import verify_email_smtp, generate_email_permutations
+from app.engine.verifier import verify_email_smtp, generate_email_permutations, enrich_person_email
 from app.engine.copywriter import generate_cold_email
 
 router = APIRouter(prefix="/api/leads", tags=["leads"])
@@ -10,6 +10,18 @@ router = APIRouter(prefix="/api/leads", tags=["leads"])
 
 class VerifyEmailRequest(BaseModel):
     email: str
+
+
+class EnrichEmailRequest(BaseModel):
+    first_name: str
+    last_name: str
+    company_domain: str
+
+
+class SuppressionCreateRequest(BaseModel):
+    entry_type: str = "email"  # 'email' or 'domain'
+    value: str
+    reason: Optional[str] = "manual"
 
 
 class GenerateCopyRequest(BaseModel):
@@ -44,6 +56,44 @@ async def list_leads(campaign_id: Optional[int] = None, limit: int = 50):
 @router.post("/verify")
 async def verify_email_endpoint(req: VerifyEmailRequest):
     return await verify_email_smtp(req.email)
+
+
+@router.post("/enrich-email")
+async def enrich_email_endpoint(req: EnrichEmailRequest):
+    return await enrich_person_email(req.first_name, req.last_name, req.company_domain)
+
+
+@router.get("/suppression")
+async def list_suppression():
+    conn = await get_db_connection()
+    cur = await conn.execute("SELECT * FROM suppression_list ORDER BY id DESC")
+    rows = [dict(r) for r in await cur.fetchall()]
+    await conn.close()
+    return rows
+
+
+@router.post("/suppression")
+async def add_suppression(req: SuppressionCreateRequest):
+    val = req.value.strip().lower().lstrip("@")
+    if not val:
+        raise HTTPException(status_code=400, detail="Value cannot be empty")
+    conn = await get_db_connection()
+    await conn.execute(
+        "INSERT OR IGNORE INTO suppression_list (entry_type, value, reason) VALUES (?, ?, ?)",
+        (req.entry_type, val, req.reason or "manual"),
+    )
+    await conn.commit()
+    await conn.close()
+    return {"ok": True, "entry_type": req.entry_type, "value": val}
+
+
+@router.delete("/suppression/{entry_id}")
+async def remove_suppression(entry_id: int):
+    conn = await get_db_connection()
+    await conn.execute("DELETE FROM suppression_list WHERE id = ?", (entry_id,))
+    await conn.commit()
+    await conn.close()
+    return {"ok": True}
 
 
 @router.post("/generate-copy")
