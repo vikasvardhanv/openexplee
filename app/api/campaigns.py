@@ -15,9 +15,66 @@ class ProductAnalyzeRequest(BaseModel):
     url: str
 
 
+class AutopilotRequest(BaseModel):
+    url: str
+    auto_send: bool = False
+    max_campaigns: int = 3
+    leads_per_campaign: int = 5
+
+
 @router.post("/analyze-product")
 async def analyze_product_endpoint(req: ProductAnalyzeRequest):
     return await analyze_my_product(req.url)
+
+
+@router.post("/autopilot")
+async def launch_autopilot(req: AutopilotRequest, background_tasks: BackgroundTasks):
+    """
+    Explee-style 1-click autopilot:
+    1. Crawls the submitted website & extracts product + ICP segments
+    2. Creates campaigns for each ICP segment
+    3. Discovers leads, verifies mailboxes, drafts AI copy, and optionally auto-sends
+    """
+    analysis = await analyze_my_product(req.url)
+    value_prop = analysis.get("value_proposition") or f"Solutions by {req.url}"
+    product_name = analysis.get("product_name", req.url)
+    icps = (analysis.get("target_icps") or [])[: max(1, min(req.max_campaigns, 6))]
+
+    created = []
+    conn = await get_db_connection()
+    try:
+        for icp in icps:
+            camp_name = icp.get("campaign_name") or "Target ICP"
+            icp_query = icp.get("icp_query") or value_prop
+            cursor = await conn.execute(
+                """
+                INSERT INTO campaigns (name, icp_prompt, target_industry, value_proposition, status)
+                VALUES (?, ?, ?, ?, 'discovering')
+                """,
+                (camp_name, icp_query, product_name[:80], value_prop),
+            )
+            cid = cursor.lastrowid
+            created.append({"id": cid, "name": camp_name, "icp_query": icp_query})
+            background_tasks.add_task(
+                run_discovery_task,
+                cid,
+                icp_query,
+                value_prop,
+                req.auto_send,
+                max(1, min(req.leads_per_campaign, 15)),
+            )
+        await conn.commit()
+    finally:
+        await conn.close()
+
+    return {
+        "product_name": product_name,
+        "value_proposition": value_prop,
+        "key_features": analysis.get("key_features", []),
+        "crawled_subpages": analysis.get("crawled_subpages", []),
+        "auto_send": req.auto_send,
+        "campaigns_created": created,
+    }
 
 
 class CampaignCreate(BaseModel):
@@ -25,15 +82,22 @@ class CampaignCreate(BaseModel):
     icp_prompt: str
     target_industry: Optional[str] = "B2B SaaS"
     value_proposition: str
+    auto_send: bool = False
 
 
-async def run_discovery_task(campaign_id: int, icp_prompt: str, value_prop: str):
+async def run_discovery_task(
+    campaign_id: int,
+    icp_prompt: str,
+    value_prop: str,
+    auto_send: bool = False,
+    max_companies: int = 8,
+):
     conn = await get_db_connection()
     try:
         await conn.execute("UPDATE campaigns SET status = 'discovering' WHERE id = ?", (campaign_id,))
         await conn.commit()
 
-        leads = await discover_leads_for_icp(icp_prompt, max_companies=8)
+        leads = await discover_leads_for_icp(icp_prompt, max_companies=max_companies)
 
         for l in leads:
             cursor = await conn.execute("""
@@ -79,6 +143,9 @@ async def run_discovery_task(campaign_id: int, icp_prompt: str, value_prop: str)
         """, (campaign_id, campaign_id))
         await conn.commit()
 
+        if auto_send:
+            await dispatch_campaign_batch(campaign_id, limit=max_companies)
+
     except Exception as e:
         print(f"[Campaign Task Error]: {e}")
         await conn.execute("UPDATE campaigns SET status = 'error' WHERE id = ?", (campaign_id,))
@@ -113,7 +180,7 @@ async def create_campaign(req: CampaignCreate, background_tasks: BackgroundTasks
     await conn.close()
 
     # Automatically trigger discovery in the background
-    background_tasks.add_task(run_discovery_task, campaign_id, req.icp_prompt, req.value_proposition)
+    background_tasks.add_task(run_discovery_task, campaign_id, req.icp_prompt, req.value_proposition, req.auto_send)
 
     return {"id": campaign_id, "name": req.name, "status": "discovering"}
 

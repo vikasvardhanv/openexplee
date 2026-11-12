@@ -1,4 +1,5 @@
 import asyncio
+from app.config import settings
 from app.database import get_db_connection
 from app.engine.sequencer import get_next_available_inbox, send_single_email
 
@@ -49,10 +50,10 @@ async def process_due_followups(limit: int = 10) -> int:
         first_name = (lead.get("contact_name") or "there").split()[0]
 
         if lead.get("followup_step") == 1:
+            cal_line = f"\n\nHappy to jump on a quick 15-min call — pick any slot here: {settings.booking_url}" if settings.booking_url else "\n\nOpen to a quick 5-minute chat this week?"
             body = (
                 f"{{Hi|Hey}} {first_name},\n\n"
-                f"Just bumping this to the top of your inbox in case it got buried.\n\n"
-                f"Open to a quick 5-minute chat this week?"
+                f"Just bumping this to the top of your inbox in case it got buried.{cal_line}"
             )
         else:
             body = (
@@ -79,3 +80,4 @@ async def run_scheduler_loop(interval_seconds: int = 300) -> None:
         except Exception as exc:
             print(f"[Scheduler] Background tick error: {exc}")
         await asyncio.sleep(interval_seconds)
+

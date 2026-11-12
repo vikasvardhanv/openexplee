@@ -10,6 +10,8 @@ from app.config import settings
 from app.engine.sequencer import send_single_email
 from app.engine.verifier import enrich_person_email
 from app.engine.scheduler import reset_daily_inbox_quotas, process_due_followups
+from app.engine.llm import _extract_json_blob
+from app.engine.copywriter import generate_cold_email
 
 
 async def run_checks():
@@ -103,6 +105,13 @@ async def run_checks():
     assert isinstance(reset_count, int)
     due_count = await process_due_followups(limit=0)
     assert due_count == 0
+
+    # 8. LLM JSON parser & Cal.com booking CTA injection
+    parsed_blob = _extract_json_blob("Here is JSON:\n```json\n{\"ok\": true}\n```")
+    assert parsed_blob == {"ok": True}
+    with patch("app.engine.copywriter.call_llm_json", new=AsyncMock(return_value=None)):
+        draft = await generate_cold_email("Acme", "acme.com", "Jane Doe", "CTO", "AI workflows", "Agent governance")
+        assert "https://cal.viktron.ai/vikash/15min" in draft["body"]
 
     print("ALL CHECKS PASSED!")
 

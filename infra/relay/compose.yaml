@@ -33,3 +33,4 @@ services:
 volumes:
   postgres_data:
   relay_media:
+

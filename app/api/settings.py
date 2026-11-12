@@ -14,6 +14,10 @@ PERSISTED_FIELDS = (
     "anthropic_api_key",
     "groq_api_key",
     "ollama_base_url",
+    "thor_ollama_url",
+    "thor_ollama_model",
+    "thor_cdp_url",
+    "booking_url",
     "serper_api_key",
     "max_daily_sends_per_inbox",
 )
@@ -27,6 +31,10 @@ class SettingsUpdate(BaseModel):
     anthropic_api_key: Optional[str] = None
     groq_api_key: Optional[str] = None
     ollama_base_url: Optional[str] = None
+    thor_ollama_url: Optional[str] = None
+    thor_ollama_model: Optional[str] = None
+    thor_cdp_url: Optional[str] = None
+    booking_url: Optional[str] = None
     serper_api_key: Optional[str] = None
     max_daily_sends_per_inbox: Optional[int] = None
 
@@ -67,6 +75,10 @@ async def get_settings():
         "anthropic_api_key": mask_key(settings.anthropic_api_key),
         "groq_api_key": mask_key(settings.groq_api_key),
         "ollama_base_url": settings.ollama_base_url,
+        "thor_ollama_url": settings.thor_ollama_url,
+        "thor_ollama_model": settings.thor_ollama_model,
+        "thor_cdp_url": settings.thor_cdp_url,
+        "booking_url": settings.booking_url,
         "serper_api_key": mask_key(settings.serper_api_key),
         "max_daily_sends_per_inbox": settings.max_daily_sends_per_inbox,
     }
@@ -98,3 +110,18 @@ async def update_settings(req: SettingsUpdate):
             await conn.close()
 
     return {"ok": True, "provider": settings.default_llm_provider}
+
+
+@router.post("/clear-demo")
+async def clear_demo_data():
+    """Removes seeded demo campaigns, leads, and dummy inboxes cleanly."""
+    conn = await get_db_connection()
+    try:
+        await conn.execute("DELETE FROM warmup_logs")
+        await conn.execute("DELETE FROM leads")
+        await conn.execute("DELETE FROM campaigns")
+        await conn.execute("DELETE FROM inboxes WHERE smtp_password LIKE 'demo_pass_%'")
+        await conn.commit()
+    finally:
+        await conn.close()
+    return {"ok": True, "message": "Demo campaigns, leads, and dummy inboxes cleared."}

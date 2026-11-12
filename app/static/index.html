@@ -218,19 +218,27 @@
         </div>
 
         <!-- Auto-Analyze My Company URL Banner (Like Explee) -->
-        <div
-          class="mt-6 p-4 rounded-xl bg-indigo-950/40 border border-indigo-500/30 flex flex-col sm:flex-row items-center gap-3">
-          <div class="flex-1 w-full">
-            <label class="block text-[11px] font-bold uppercase text-indigo-300 mb-1">Auto-Extract ICP from your Website
-              (Like Explee)</label>
-            <input type="url" id="analyze-website-input" value="https://viktron.ai"
-              placeholder="https://yourcompany.com"
-              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-400">
+        <div class="mt-6 p-4 rounded-xl bg-indigo-950/40 border border-indigo-500/30 space-y-3">
+          <div class="flex flex-col sm:flex-row items-center gap-3">
+            <div class="flex-1 w-full">
+              <label class="block text-[11px] font-bold uppercase text-indigo-300 mb-1">Website URL (Explee 1-Click Autopilot)</label>
+              <input type="url" id="analyze-website-input" value="https://viktron.ai"
+                placeholder="https://yourcompany.com"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-400">
+            </div>
+            <button type="button" onclick="handleAnalyzeWebsite()" id="btn-analyze-site"
+              class="w-full sm:w-auto mt-2 sm:mt-5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs rounded-xl transition flex items-center justify-center gap-1.5 whitespace-nowrap">
+              <i data-lucide="cpu" class="w-3.5 h-3.5"></i> Preview ICPs
+            </button>
+            <button type="button" onclick="handleLaunchAutopilot()" id="btn-autopilot"
+              class="w-full sm:w-auto mt-2 sm:mt-5 px-4 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/30 whitespace-nowrap">
+              <i data-lucide="zap" class="w-3.5 h-3.5"></i> Run Full Autopilot
+            </button>
           </div>
-          <button type="button" onclick="handleAnalyzeWebsite()" id="btn-analyze-site"
-            class="w-full sm:w-auto mt-2 sm:mt-5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/30 whitespace-nowrap">
-            <i data-lucide="cpu" class="w-3.5 h-3.5"></i> Auto-Analyze Product
-          </button>
+          <label class="inline-flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+            <input type="checkbox" id="autopilot-autosend" class="rounded bg-slate-900 border-slate-700 text-indigo-500">
+            <span>Automatically start sending verified leads using connected safe inboxes (with Cal.com booking link)</span>
+          </label>
         </div>
 
         <form id="form-create-campaign" onsubmit="handleCreateCampaign(event)" class="mt-6 space-y-4 max-w-3xl">
@@ -524,12 +532,33 @@
             <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Default AI Provider</label>
             <select id="settings-provider"
               class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
-              <option value="gemini">Google Gemini (Recommended - Fast & Cost-Effective)</option>
+              <option value="claude_cli">Claude Code Subscription (Local CLI — $0 Token Cost)</option>
+              <option value="thor_ollama">Thor GPU Ollama (100.114.48.60:11434 — $0 Token Cost)</option>
+              <option value="gemini">Google Gemini (API Key)</option>
               <option value="openai">OpenAI (GPT-4o Mini / GPT-4o)</option>
-              <option value="anthropic">Anthropic (Claude 3.5 Sonnet / Haiku)</option>
+              <option value="anthropic">Anthropic API (Claude 3.5 Haiku / Sonnet)</option>
               <option value="groq">Groq (Llama 3.3 70B - Ultra Fast)</option>
-              <option value="ollama">Ollama (100% Local / Free)</option>
+              <option value="ollama">Local Ollama (localhost:11434)</option>
             </select>
+          </div>
+
+          <div>
+            <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Cal.com Booking URL (Included in Outreach CTAs)</label>
+            <input type="url" id="url-booking" value="https://cal.viktron.ai/vikash/15min"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Thor Ollama Base URL</label>
+              <input type="text" id="url-thor-ollama" value="http://100.114.48.60:11434"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
+            </div>
+            <div>
+              <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Thor Kernel Browser (CDP URL)</label>
+              <input type="text" id="url-thor-cdp" value="http://100.114.48.60:9222"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
+            </div>
           </div>
 
           <div>
@@ -563,10 +592,16 @@
               class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
           </div>
 
-          <button type="submit"
-            class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition">
-            Save Settings
-          </button>
+          <div class="flex flex-wrap gap-3 pt-2">
+            <button type="submit"
+              class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition">
+              Save Settings
+            </button>
+            <button type="button" onclick="handleClearDemo()"
+              class="px-5 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 font-semibold text-sm transition">
+              Clear Seeded Demo Data
+            </button>
+          </div>
         </form>
       </div>
     </section>
@@ -992,7 +1027,10 @@
     async function loadSettings() {
       const res = await fetch('/api/settings');
       const data = await res.json();
-      document.getElementById('settings-provider').value = data.default_llm_provider || 'gemini';
+      document.getElementById('settings-provider').value = data.default_llm_provider || 'claude_cli';
+      if (data.booking_url) document.getElementById('url-booking').value = data.booking_url;
+      if (data.thor_ollama_url) document.getElementById('url-thor-ollama').value = data.thor_ollama_url;
+      if (data.thor_cdp_url) document.getElementById('url-thor-cdp').value = data.thor_cdp_url;
       if (data.gemini_api_key) document.getElementById('key-gemini').placeholder = data.gemini_api_key;
       if (data.openai_api_key) document.getElementById('key-openai').placeholder = data.openai_api_key;
       if (data.anthropic_api_key) document.getElementById('key-anthropic').placeholder = data.anthropic_api_key;
@@ -1004,6 +1042,9 @@
       e.preventDefault();
       const payload = {
         default_llm_provider: document.getElementById('settings-provider').value,
+        booking_url: document.getElementById('url-booking').value || null,
+        thor_ollama_url: document.getElementById('url-thor-ollama').value || null,
+        thor_cdp_url: document.getElementById('url-thor-cdp').value || null,
         gemini_api_key: document.getElementById('key-gemini').value || null,
         openai_api_key: document.getElementById('key-openai').value || null,
         anthropic_api_key: document.getElementById('key-anthropic').value || null,
@@ -1017,7 +1058,42 @@
         body: JSON.stringify(payload)
       });
       if (res.ok) {
-        showToast('Settings saved successfully!');
+        showToast('Settings saved and persisted to SQLite!');
+      }
+    }
+
+    async function handleClearDemo() {
+      if (!confirm('Clear seeded demo campaigns, leads, and dummy inboxes?')) return;
+      const res = await fetch('/api/settings/clear-demo', { method: 'POST' });
+      if (res.ok) {
+        showToast('Demo data cleared! Ready for real outreach.');
+        loadDashboard();
+      }
+    }
+
+    async function handleLaunchAutopilot() {
+      const url = document.getElementById('analyze-website-input').value.trim();
+      if (!url) return showToast('Enter a website URL first', 'error');
+      const autoSend = document.getElementById('autopilot-autosend').checked;
+      const btn = document.getElementById('btn-autopilot');
+      btn.innerHTML = `<span class="animate-spin mr-1">&orarr;</span> Running Autopilot...`;
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/campaigns/autopilot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, auto_send: autoSend, max_campaigns: 3, leads_per_campaign: 5 })
+        });
+        const data = await res.json();
+        showToast(`Autopilot created ${data.campaigns_created.length} campaigns for ${data.product_name}! Discovering & enriching leads now.`);
+        loadCampaigns();
+      } catch (err) {
+        showToast('Autopilot failed', 'error');
+      } finally {
+        btn.innerHTML = `<i data-lucide="zap" class="w-3.5 h-3.5"></i> Run Full Autopilot`;
+        btn.disabled = false;
+        lucide.createIcons();
       }
     }
 

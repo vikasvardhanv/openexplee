@@ -68,30 +68,53 @@ async def scrape_company_website(url: str, max_depth: int = 1) -> Dict[str, Any]
                 if not any(ext in match.lower() for ext in [".png", ".jpg", ".svg", ".webp", "sentry", "example"]):
                     intel["found_emails"].add(match.lower())
 
-            # Find internal links to About/Team pages
+            # Find internal links to About/Team/Product/Pricing pages
             about_urls = []
             for a in soup.find_all("a", href=True):
                 href = a["href"].strip()
                 text = a.get_text(strip=True).lower()
                 full_url = urljoin(url, href)
                 if urlparse(full_url).netloc == parsed.netloc:
-                    if any(kw in text or kw in href.lower() for kw in ["about", "team", "leadership", "founder", "contact"]):
+                    if any(kw in text or kw in href.lower() for kw in ["about", "team", "leadership", "founder", "contact", "product", "feature", "pricing", "platform"]):
                         if full_url not in about_urls and full_url != url:
                             about_urls.append(full_url)
 
-            # Crawl up to 2 subpages (e.g. /about or /team)
-            for sub_url in about_urls[:2]:
+            # Crawl up to 4 subpages for deep product & team extraction
+            for sub_url in about_urls[:4]:
                 try:
                     sub_resp = await client.get(sub_url)
                     if sub_resp.status_code == 200:
                         sub_soup = BeautifulSoup(sub_resp.text, "html.parser")
-                        sub_text = " ".join([p.get_text(strip=True) for p in sub_soup.find_all("p") if len(p.get_text(strip=True)) > 20])
-                        intel["content_summary"] += f"\n[About/Team Page]: {sub_text[:1500]}"
+                        sub_text = " ".join([p.get_text(strip=True) for p in sub_soup.find_all(["p", "li"]) if len(p.get_text(strip=True)) > 20])
+                        intel["content_summary"] += f"\n[{sub_url}]: {sub_text[:1500]}"
+                        intel["subpages"].append(sub_url)
                         for match in EMAIL_REGEX.findall(sub_resp.text):
                             if not any(ext in match.lower() for ext in [".png", ".jpg", ".svg", ".webp", "sentry", "example"]):
                                 intel["found_emails"].add(match.lower())
                 except Exception:
                     pass
+
+        # Thor Kernel Browser fallback for JS-heavy SPAs when raw HTML text is sparse
+        if len(intel["content_summary"]) < 250:
+            try:
+                from playwright.async_api import async_playwright
+                from app.config import settings
+
+                async with async_playwright() as pw:
+                    browser = await pw.chromium.connect_over_cdp(settings.thor_cdp_url, timeout=4000)
+                    context = await browser.new_context()
+                    page = await context.new_page()
+                    await page.goto(url, wait_until="domcontentloaded", timeout=12000)
+                    await page.wait_for_timeout(1500)
+                    rendered_text = await page.inner_text("body")
+                    intel["content_summary"] = (rendered_text or "")[:4000]
+                    for match in EMAIL_REGEX.findall(await page.content()):
+                        if not any(ext in match.lower() for ext in [".png", ".jpg", ".svg", ".webp", "sentry", "example"]):
+                            intel["found_emails"].add(match.lower())
+                    await context.close()
+                    await browser.close()
+            except Exception:
+                pass
 
     except Exception as e:
         intel["error"] = str(e)

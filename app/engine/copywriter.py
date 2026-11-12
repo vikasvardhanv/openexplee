@@ -1,9 +1,8 @@
-import httpx
-import json
 import random
 import re
-from typing import Dict, Any, Optional
+from typing import Dict, Optional
 from app.config import settings
+from app.engine.llm import call_llm_json
 
 
 def resolve_spintax(text: str) -> str:
@@ -21,16 +20,16 @@ async def generate_cold_email(
     job_title: str,
     company_summary: str,
     value_proposition: str,
-    sender_name: str = "Vikas",
+    sender_name: str = "Vikash",
     provider: Optional[str] = None,
     api_key: Optional[str] = None
 ) -> Dict[str, str]:
     """
-    Generates personalized cold outreach based on live website intel.
-    Supports Gemini, OpenAI, Claude, Groq, and local Ollama.
+    Generates personalized cold outreach with your VPS Cal.com booking link
+    using Claude Code subscription, Thor Ollama, or configured cloud APIs.
     """
-    provider = provider or settings.default_llm_provider
-    contact_first = contact_name.split()[0] if contact_name else "there"
+    contact_first = contact_name.split()[0] if contact_name and contact_name != "Founder / Growth Lead" else "there"
+    booking_line = f"Booking link to include cleanly as a low-friction CTA: {settings.booking_url}" if settings.booking_url else ""
 
     prompt = f"""
 You are an elite B2B sales development representative writing a high-converting, hyper-personalized cold email.
@@ -44,113 +43,37 @@ Prospect Information:
 Our Product / Value Proposition:
 {value_proposition}
 
+{booking_line}
+
 Instructions:
-1. Subject line: 3 to 6 words, lower-case style, conversational (e.g. "quick question about {company_name}", "idea for your {company_name} team").
-2. Body: Maximum 75-100 words.
+1. Subject line: 3 to 6 words, lowercase style, conversational (e.g. "quick question about {company_name}").
+2. Body: Maximum 80-110 words.
 3. Sentence 1: Genuine observation based on what their company actually does.
 4. Sentence 2: Specific pain point related to our value proposition.
-5. Sentence 3: Low-friction call to action (e.g., "Open to a quick 5-min chat next Tuesday?").
-6. No cheesy flattery, no buzzwords ("revolutionary", "synergy").
+5. Sentence 3: Low-friction call to action inviting a 15-min chat with the booking link ({settings.booking_url}).
+6. Sign off as {sender_name}. No cheesy buzzwords ("revolutionary", "synergy").
 
-Respond in valid JSON with exactly two fields:
+Respond strictly in valid JSON with two fields:
 {{"subject": "...", "body": "..."}}
 """
 
-    # 1. Google Gemini
-    if provider == "gemini":
-        key = api_key or settings.gemini_api_key
-        if key:
-            try:
-                model = settings.default_llm_model or "gemini-2.5-flash"
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
-                payload = {
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {"response_mime_type": "application/json"}
-                }
-                async with httpx.AsyncClient(timeout=20.0) as client:
-                    resp = await client.post(url, json=payload)
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        text = data["candidates"][0]["content"]["parts"][0]["text"]
-                        return json.loads(text)
-            except Exception as e:
-                print(f"[Copywriter] Gemini error: {e}")
+    parsed = await call_llm_json(prompt, provider=provider, api_key=api_key)
+    if isinstance(parsed, dict) and parsed.get("subject") and parsed.get("body"):
+        return {"subject": str(parsed["subject"]), "body": str(parsed["body"])}
 
-    # 2. OpenAI / Groq / DeepSeek / Ollama (OpenAI-compatible)
-    if provider in ["openai", "groq", "ollama"]:
-        base_url = "https://api.openai.com/v1"
-        model_name = "gpt-4o-mini"
-        auth_header = {}
-
-        if provider == "openai":
-            key = api_key or settings.openai_api_key
-            auth_header = {"Authorization": f"Bearer {key}"}
-        elif provider == "groq":
-            key = api_key or settings.groq_api_key
-            base_url = "https://api.groq.com/openai/v1"
-            model_name = "llama-3.3-70b-versatile"
-            auth_header = {"Authorization": f"Bearer {key}"}
-        elif provider == "ollama":
-            base_url = f"{settings.ollama_base_url.rstrip('/')}/v1"
-            model_name = "llama3.2"
-
-        if (provider == "ollama") or auth_header:
-            try:
-                async with httpx.AsyncClient(timeout=25.0) as client:
-                    resp = await client.post(
-                        f"{base_url}/chat/completions",
-                        headers={"Content-Type": "application/json", **auth_header},
-                        json={
-                            "model": model_name,
-                            "messages": [{"role": "user", "content": prompt}],
-                            "response_format": {"type": "json_object"} if provider != "ollama" else None
-                        }
-                    )
-                    if resp.status_code == 200:
-                        content = resp.json()["choices"][0]["message"]["content"]
-                        # Extract JSON block
-                        m = re.search(r"\{.*\}", content, re.DOTALL)
-                        if m:
-                            return json.loads(m.group(0))
-            except Exception as e:
-                print(f"[Copywriter] OpenAI-compatible error: {e}")
-
-    # 3. Anthropic Claude
-    if provider == "anthropic":
-        key = api_key or settings.anthropic_api_key
-        if key:
-            try:
-                async with httpx.AsyncClient(timeout=25.0) as client:
-                    resp = await client.post(
-                        "https://api.anthropic.com/v1/messages",
-                        headers={
-                            "x-api-key": key,
-                            "anthropic-version": "2023-06-01",
-                            "Content-Type": "application/json",
-                        },
-                        json={
-                            "model": "claude-3-5-haiku-latest",
-                            "max_tokens": 512,
-                            "messages": [{"role": "user", "content": prompt}],
-                        },
-                    )
-                    if resp.status_code == 200:
-                        content = resp.json()["content"][0]["text"]
-                        m = re.search(r"\{.*\}", content, re.DOTALL)
-                        if m:
-                            return json.loads(m.group(0))
-            except Exception as e:
-                print(f"[Copywriter] Anthropic error: {e}")
-
-    # Fallback Smart Dynamic Template
-    subject = f"question regarding {company_name}"
+    # Smart Dynamic Fallback Template (includes live VPS Cal.com link)
+    subject = f"quick question about {company_name}"
+    cta = (
+        f"Open to a quick 15-min chat next week? Grab any slot here: {settings.booking_url}"
+        if settings.booking_url
+        else "Are you open to a brief 5-minute chat next week to see if there's a fit?"
+    )
     body = (
-        f"Hi {contact_first},\n\n"
-        f"Saw what {company_name} is building in your space and wanted to reach out directly.\n\n"
-        f"We've been helping teams like yours with {value_proposition.lower()[:80]}.\n\n"
-        f"Are you open to a brief 5-minute chat next week to see if there's a fit?\n\n"
+        f"{{Hi|Hey}} {contact_first},\n\n"
+        f"Saw what {company_name} is building and wanted to reach out directly.\n\n"
+        f"We've been helping teams like yours with {value_proposition[:120]}.\n\n"
+        f"{cta}\n\n"
         f"Best,\n{sender_name}"
     )
 
     return {"subject": subject, "body": body}
-

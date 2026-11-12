@@ -31,33 +31,22 @@ async def _get_suppressed_domains() -> Set[str]:
 
 
 async def _extract_people_with_llm(domain: str, text: str, job_titles: Optional[List[str]] = None) -> List[Dict[str, str]]:
-    """Uses Gemini (if configured) or regex heuristics to extract decision-makers."""
-    if settings.gemini_api_key and text:
+    """Uses Claude CLI / Thor Ollama / LLM or regex heuristics to extract decision-makers."""
+    if text:
+        from app.engine.llm import call_llm_json
+
         titles_hint = f"Target roles: {', '.join(job_titles)}." if job_titles else "Focus on Founders, CEO, CTO, VP/Head of Engineering, AI, or Sales."
         prompt = (
             f"Extract real person names and job titles associated with domain {domain} from this text. "
             f"{titles_hint}\nText:\n{text[:3000]}\n\n"
-            'Return ONLY valid JSON array of objects: [{"first_name": "...", "last_name": "...", "job_title": "..."}]. '
+            'Return ONLY a valid JSON array of objects: [{"first_name": "...", "last_name": "...", "job_title": "..."}]. '
             "Return [] if no real human names are present."
         )
-        try:
-            model = settings.default_llm_model or "gemini-2.5-flash"
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={settings.gemini_api_key}"
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                resp = await client.post(
-                    url,
-                    json={
-                        "contents": [{"parts": [{"text": prompt}]}],
-                        "generationConfig": {"response_mime_type": "application/json"},
-                    },
-                )
-                if resp.status_code == 200:
-                    raw = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
-                    parsed = json.loads(raw)
-                    if isinstance(parsed, list):
-                        return [p for p in parsed if p.get("first_name") and p.get("last_name")]
-        except Exception:
-            pass
+        parsed = await call_llm_json(prompt)
+        if isinstance(parsed, list):
+            extracted = [p for p in parsed if isinstance(p, dict) and p.get("first_name") and p.get("last_name")]
+            if extracted:
+                return extracted[:5]
 
     people = []
     seen = set()
