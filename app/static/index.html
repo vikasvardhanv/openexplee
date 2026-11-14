@@ -385,11 +385,16 @@
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[620px]">
         <!-- Left Pane: Thread List (4 cols) -->
         <div class="glass-panel p-4 rounded-2xl lg:col-span-5 flex flex-col space-y-3">
-          <div class="relative">
-            <i data-lucide="search" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
-            <input type="text" id="mailbox-search" oninput="handleMailboxSearch(event)"
+          <div class="relative flex items-center">
+            <i data-lucide="search" class="w-4 h-4 text-slate-500 absolute left-3 pointer-events-none"></i>
+            <input type="search" id="mailbox-search" name="openexplee_thread_search_term"
+              autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false"
+              oninput="handleMailboxSearch(event)"
               placeholder="Search by prospect name, company or email..."
-              class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+              class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-8 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+            <button id="btn-clear-mailbox-search" onclick="clearMailboxSearch()" class="hidden absolute right-2.5 text-slate-400 hover:text-white p-0.5 rounded transition">
+              <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            </button>
           </div>
 
           <div id="mailbox-threads-container" class="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[560px]">
@@ -795,7 +800,11 @@
       if (tabId === 'dashboard') loadDashboard();
       if (tabId === 'campaigns') loadCampaigns();
       if (tabId === 'leads') loadLeads();
-      if (tabId === 'mailbox') loadMailbox();
+      if (tabId === 'mailbox') {
+        const s = document.getElementById('mailbox-search');
+        if (s && s.value === 'test@yopmail.com') s.value = '';
+        loadMailbox();
+      }
       if (tabId === 'inboxes') loadInboxes();
       if (tabId === 'settings') loadSettings();
     }
@@ -1485,14 +1494,40 @@
     }
 
     function handleMailboxSearch(e) {
+      const val = document.getElementById('mailbox-search')?.value.trim();
+      const clearBtn = document.getElementById('btn-clear-mailbox-search');
+      if (clearBtn) {
+        if (val) clearBtn.classList.remove('hidden');
+        else clearBtn.classList.add('hidden');
+      }
+      loadMailbox();
+    }
+
+    function clearMailboxSearch() {
+      const el = document.getElementById('mailbox-search');
+      if (el) el.value = '';
+      const clearBtn = document.getElementById('btn-clear-mailbox-search');
+      if (clearBtn) clearBtn.classList.add('hidden');
       loadMailbox();
     }
 
     function renderMailboxThreads(threads) {
       const c = document.getElementById('mailbox-threads-container');
       if (!c) return;
+      const searchVal = document.getElementById('mailbox-search')?.value.trim();
       if (!threads.length) {
-        c.innerHTML = `<div class="py-12 text-center text-slate-500 text-xs">No conversation threads found. Dispatch an outreach batch to start conversations!</div>`;
+        if (searchVal) {
+          c.innerHTML = `
+            <div class="py-12 text-center text-slate-400 text-xs space-y-2">
+              <p>No conversation threads matching "<strong class="text-white">${searchVal}</strong>".</p>
+              <button onclick="clearMailboxSearch()" class="px-3 py-1 rounded-lg bg-indigo-600/30 text-indigo-300 hover:bg-indigo-600/50 border border-indigo-500/30 text-xs font-semibold transition">
+                Clear Search Filter
+              </button>
+            </div>
+          `;
+        } else {
+          c.innerHTML = `<div class="py-12 text-center text-slate-500 text-xs">No conversation threads found. Dispatch an outreach batch to start conversations!</div>`;
+        }
         return;
       }
       c.innerHTML = threads.map(t => {
