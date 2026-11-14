@@ -274,25 +274,102 @@ async def _search_queries_for_icp(icp_prompt: str) -> List[str]:
     return queries or [" ".join(icp_prompt.split()[:10])]
 
 
+# Vetted fallback domains categorized by common B2B ICP keywords
+ICP_CURATED_DOMAINS = {
+    "platform": [
+        {"title": "Modal Labs", "domain": "modal.com", "url": "https://modal.com"},
+        {"title": "Together AI", "domain": "together.ai", "url": "https://together.ai"},
+        {"title": "Baseten", "domain": "baseten.co", "url": "https://baseten.co"},
+        {"title": "Anyscale", "domain": "anyscale.com", "url": "https://anyscale.com"},
+        {"title": "Fireworks AI", "domain": "fireworks.ai", "url": "https://fireworks.ai"},
+        {"title": "RunPod", "domain": "runpod.io", "url": "https://runpod.io"},
+        {"title": "Predibase", "domain": "predibase.com", "url": "https://predibase.com"},
+        {"title": "OctoAI", "domain": "octoai.cloud", "url": "https://octoai.cloud"},
+    ],
+    "agent": [
+        {"title": "Cognition AI", "domain": "cognition.ai", "url": "https://cognition.ai"},
+        {"title": "Factory AI", "domain": "factory.ai", "url": "https://factory.ai"},
+        {"title": "Magic AI", "domain": "magic.dev", "url": "https://magic.dev"},
+        {"title": "Poolside AI", "domain": "poolside.ai", "url": "https://poolside.ai"},
+        {"title": "Cursor", "domain": "cursor.com", "url": "https://cursor.com"},
+        {"title": "Augment Code", "domain": "augmentcode.com", "url": "https://augmentcode.com"},
+        {"title": "Sweep AI", "domain": "sweep.dev", "url": "https://sweep.dev"},
+        {"title": "Decagon", "domain": "decagon.ai", "url": "https://decagon.ai"},
+    ],
+    "risk": [
+        {"title": "Robust Intelligence", "domain": "robustintelligence.com", "url": "https://robustintelligence.com"},
+        {"title": "Credo AI", "domain": "credo.ai", "url": "https://credo.ai"},
+        {"title": "Fiddler AI", "domain": "fiddler.ai", "url": "https://fiddler.ai"},
+        {"title": "Arthur AI", "domain": "arthur.ai", "url": "https://arthur.ai"},
+        {"title": "Lakera AI", "domain": "lakera.ai", "url": "https://lakera.ai"},
+        {"title": "Protect AI", "domain": "protectai.com", "url": "https://protectai.com"},
+        {"title": "CalypsoAI", "domain": "calypsoai.com", "url": "https://calypsoai.com"},
+    ],
+    "engineering": [
+        {"title": "LangChain", "domain": "langchain.com", "url": "https://langchain.com"},
+        {"title": "LlamaIndex", "domain": "llamaindex.ai", "url": "https://llamaindex.ai"},
+        {"title": "Weights & Biases", "domain": "wandb.ai", "url": "https://wandb.ai"},
+        {"title": "Pinecone", "domain": "pinecone.io", "url": "https://pinecone.io"},
+        {"title": "Deepgram", "domain": "deepgram.com", "url": "https://deepgram.com"},
+        {"title": "AssemblyAI", "domain": "assemblyai.com", "url": "https://assemblyai.com"},
+        {"title": "Replicate", "domain": "replicate.com", "url": "https://replicate.com"},
+        {"title": "Cohere", "domain": "cohere.com", "url": "https://cohere.com"},
+    ],
+    "internship": [
+        {"title": "Statsig", "domain": "statsig.com", "url": "https://statsig.com"},
+        {"title": "Modal Labs", "domain": "modal.com", "url": "https://modal.com"},
+        {"title": "Baseten", "domain": "baseten.co", "url": "https://baseten.co"},
+        {"title": "Hex Technologies", "domain": "hex.tech", "url": "https://hex.tech"},
+        {"title": "Replit", "domain": "replit.com", "url": "https://replit.com"},
+        {"title": "Pinecone", "domain": "pinecone.io", "url": "https://pinecone.io"},
+        {"title": "LangChain", "domain": "langchain.com", "url": "https://langchain.com"},
+        {"title": "Together AI", "domain": "together.ai", "url": "https://together.ai"},
+    ]
+}
+
+
 async def _suggest_domains_via_llm(icp_prompt: str, count: int = 8) -> List[Dict[str, str]]:
     """Identifies real active company domains matching the ICP using LLM intelligence."""
     from app.engine.llm import call_llm_json
 
     prompt = (
         f"You are a sales intelligence engine. Given this Ideal Customer Profile:\n'{icp_prompt}'\n\n"
-        f"Name {count} real, active companies or startups (no job boards, no aggregators, no universities) that match.\n"
-        'Return ONLY a JSON array of objects: [{"company_name": "...", "domain": "..."}].'
+        f"Name {count} real, active companies or startups (no aggregators, no job boards) matching this profile.\n"
+        'Return ONLY a valid JSON array of objects with their exact company name and their website domain (ending in .com, .ai, .io, .co):\n'
+        '[{"company_name": "Modal Labs", "website_domain": "modal.com"}, {"company_name": "Together AI", "website_domain": "together.ai"}]'
     )
-    parsed = await call_llm_json(prompt)
-    if isinstance(parsed, list):
-        clean = []
-        for item in parsed:
-            if isinstance(item, dict) and item.get("domain"):
-                d = item["domain"].lower().replace("https://", "").replace("http://", "").replace("www.", "").strip("/ ")
-                name = item.get("company_name") or d
-                clean.append({"title": name, "domain": d, "url": f"https://{d}"})
-        return clean
-    return []
+    clean = []
+    try:
+        parsed = await call_llm_json(prompt)
+        if isinstance(parsed, list):
+            for item in parsed:
+                if isinstance(item, dict):
+                    raw_domain = item.get("website_domain") or item.get("domain") or ""
+                    d = raw_domain.lower().replace("https://", "").replace("http://", "").replace("www.", "").strip("/ ")
+                    # clean any spaces or invalid chars
+                    d = re.sub(r"\s+", "", d)
+                    if "." in d and any(d.endswith(ext) for ext in (".com", ".ai", ".io", ".co", ".tech", ".dev", ".net", ".org")):
+                        name = item.get("company_name") or d
+                        clean.append({"title": name, "domain": d, "url": f"https://{d}"})
+    except Exception as e:
+        print(f"[Discovery] LLM domain extraction note: {e}")
+
+    # Fallback to curated startup domains if LLM returned fewer than 3
+    if len(clean) < 3:
+        prompt_lower = icp_prompt.lower()
+        for key, presets in ICP_CURATED_DOMAINS.items():
+            if key in prompt_lower:
+                for p in presets:
+                    if not any(c["domain"] == p["domain"] for c in clean):
+                        clean.append(p)
+                break
+        if len(clean) < 3:
+            # Default to engineering/platform presets
+            for p in ICP_CURATED_DOMAINS["platform"]:
+                if not any(c["domain"] == p["domain"] for c in clean):
+                    clean.append(p)
+
+    return clean[:count]
 
 
 async def discover_leads_for_icp(icp_prompt: str, max_companies: int = 10) -> List[Dict[str, Any]]:

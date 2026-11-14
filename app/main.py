@@ -14,6 +14,7 @@ from app.api.settings import router as settings_router, load_persisted_settings
 from app.api.stats import router as stats_router
 from app.api.cloudflare import router as cloudflare_router
 from app.api.mcp import router as mcp_router
+from app.api.mailbox import router as mailbox_router
 from app.engine.scheduler import run_scheduler_loop
 
 
@@ -58,6 +59,7 @@ app.include_router(settings_router)
 app.include_router(stats_router)
 app.include_router(cloudflare_router)
 app.include_router(mcp_router)
+app.include_router(mailbox_router)
 
 # Mount Static Files
 static_dir = os.path.join(os.path.dirname(__file__), "static")

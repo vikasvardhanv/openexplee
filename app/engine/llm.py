@@ -3,13 +3,16 @@ import json
 import os
 import re
 import shutil
+import time
 from typing import Any, Dict, Optional
 import httpx
 from app.config import settings
 
+_CLAUDE_CLI_COOLDOWN_UNTIL = 0.0
+
 
 def _extract_json_blob(text: str) -> Any:
-    """Extracts the first JSON object or array from raw LLM text."""
+    """Extracts JSON object or array from raw LLM text with multi-pattern tolerance."""
     cleaned = text.strip()
     if "```" in cleaned:
         m_fence = re.search(r"```(?:json)?\s*([\s\S]*?)```", cleaned)
@@ -23,33 +26,73 @@ def _extract_json_blob(text: str) -> Any:
 
     m_obj = re.search(r"(\{[\s\S]*\}|\[[\s\S]*\])", cleaned)
     if m_obj:
-        return json.loads(m_obj.group(1))
+        try:
+            return json.loads(m_obj.group(1))
+        except json.JSONDecodeError:
+            pass
+
+    # Tolerant extraction for individual JSON objects: [{"a": 1}, {"b": 2}] or multiple lines
+    objs = re.findall(r"\{[^{}]+\}", cleaned)
+    if objs:
+        extracted = []
+        for o in objs:
+            try:
+                extracted.append(json.loads(o))
+            except Exception:
+                pass
+        if extracted:
+            return extracted
+
+    # Tolerant extraction for strings / arrays of strings
+    arrays = re.findall(r'\[\s*"[^"]+"\s*\]', cleaned)
+    if arrays:
+        items = []
+        for a in arrays:
+            try:
+                items.extend(json.loads(a))
+            except Exception:
+                pass
+        if items:
+            return items
+
+    # Fallback: extract list of quoted lines (e.g. 1. "query one" 2. "query two")
+    quoted_lines = re.findall(r'"([^"\n]{3,120})"', cleaned)
+    if quoted_lines and len(quoted_lines) >= 2:
+        return quoted_lines
+
     raise ValueError("No valid JSON found in LLM response")
 
 
-async def _call_claude_cli(prompt: str, timeout: float = 90.0) -> Optional[str]:
+async def _call_claude_cli(prompt: str, timeout: float = 30.0) -> Optional[str]:
     """Runs `claude -p` using the active local Claude Code subscription ($0 API cost)."""
+    global _CLAUDE_CLI_COOLDOWN_UNTIL
+    if time.time() < _CLAUDE_CLI_COOLDOWN_UNTIL:
+        return None
+
     claude_bin = shutil.which("claude")
     if not claude_bin:
         return None
 
     env = os.environ.copy()
     env.pop("CLAUDECODE", None)
-    proc = await asyncio.create_subprocess_exec(
-        claude_bin, "-p", prompt, "--output-format", "text",
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-        env=env,
-    )
     try:
+        proc = await asyncio.create_subprocess_exec(
+            claude_bin, "-p", prompt, "--output-format", "text", "--safe-mode", "--tools", "",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env=env,
+        )
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-    except asyncio.TimeoutError:
-        proc.kill()
-        await proc.wait()
+    except Exception:
         return None
 
+    err_text = stderr.decode(errors="ignore") if stderr else ""
     if proc.returncode != 0:
-        print(f"[LLM:claude_cli] exit {proc.returncode}: {stderr.decode(errors='ignore')[:200]}")
+        if any(w in err_text.lower() for w in ("limit", "quota", "session", "exceeded", "hit your")):
+            print(f"[LLM:claude_cli] rate/session limit reached, cooling down for 10m: {err_text[:120]}")
+            _CLAUDE_CLI_COOLDOWN_UNTIL = time.time() + 600.0
+        else:
+            print(f"[LLM:claude_cli] exit {proc.returncode}: {err_text[:120]}")
         return None
     return stdout.decode(errors="ignore").strip()
 
@@ -148,6 +191,6 @@ async def call_llm_json(prompt: str, provider: Optional[str] = None, api_key: Op
             if raw_text:
                 return _extract_json_blob(raw_text)
         except Exception as exc:
-            print(f"[LLM:{prov}] error: {exc}")
+            print(f"[LLM:{prov}] error: {exc} | raw: {repr(raw_text)[:200] if raw_text else 'None'}")
 
     return None

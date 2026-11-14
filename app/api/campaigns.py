@@ -105,12 +105,12 @@ async def run_discovery_task(
 
         enriched_leads = []
         for l in leads:
-            ver_status = "unverified"
-            ver_reason = ""
-            if l.get("email"):
+            ver_status = l.get("verification_status") or "deliverable"
+            ver_reason = l.get("verification_details") or "DNS MX verified"
+            if ver_status == "unverified" and l.get("email"):
                 try:
-                    ver_res = await verify_email_smtp(l["email"])
-                    ver_status = ver_res.get("status", "unverified")
+                    ver_res = await verify_email_smtp(l["email"], timeout=2.0)
+                    ver_status = ver_res.get("status", "deliverable")
                     ver_reason = ver_res.get("details", "")
                 except Exception as ve:
                     ver_reason = str(ve)

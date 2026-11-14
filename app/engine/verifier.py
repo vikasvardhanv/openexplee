@@ -48,7 +48,7 @@ async def get_mx_records(domain: str) -> List[str]:
         return []
 
 
-async def verify_email_smtp(email: str, timeout: float = 6.0) -> Dict[str, Any]:
+async def verify_email_smtp(email: str, timeout: float = 2.0) -> Dict[str, Any]:
     """
     Validates email address through 4 tiers:
     1. Syntax (RFC standard)

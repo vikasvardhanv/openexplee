@@ -80,6 +80,11 @@
           class="tab-btn px-3 py-2 rounded-lg text-sm font-medium transition text-slate-400 hover:text-white hover:bg-slate-800">
           <i data-lucide="users" class="w-4 h-4 inline mr-1"></i> Leads & AI Copy
         </button>
+        <button onclick="switchTab('mailbox')" id="tab-mailbox"
+          class="tab-btn px-3 py-2 rounded-lg text-sm font-medium transition text-slate-400 hover:text-white hover:bg-slate-800 flex items-center gap-1.5">
+          <i data-lucide="inbox" class="w-4 h-4 inline"></i> Mailbox
+          <span id="nav-hot-badge" class="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 hidden">0</span>
+        </button>
         <button onclick="switchTab('inboxes')" id="tab-inboxes"
           class="tab-btn px-3 py-2 rounded-lg text-sm font-medium transition text-slate-400 hover:text-white hover:bg-slate-800">
           <i data-lucide="mail" class="w-4 h-4 inline mr-1"></i> Inboxes & Domains
@@ -340,6 +345,148 @@
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: OUTREACH MAILBOX & CONVERSATIONS (Explee-style Unified Inbox) -->
+    <section id="view-mailbox" class="hidden space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-bold text-white flex items-center gap-2">
+            <i data-lucide="inbox" class="w-5 h-5 text-indigo-400"></i> Outreach Mailbox & Conversations
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">
+            Real-time prospect threads, replies, and follow-ups via <code class="text-indigo-300">outreach@getagentirl.online</code> with auto-CC to <code class="text-slate-300">vikash@viktron.ai</code>.
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="inline-flex p-1 bg-slate-900 border border-slate-800 rounded-xl">
+            <button onclick="filterMailbox('all')" id="btn-mail-all"
+              class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white transition">
+              All Threads
+            </button>
+            <button onclick="filterMailbox('hot')" id="btn-mail-hot"
+              class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition">
+              🔥 Hot / Replies
+            </button>
+            <button onclick="filterMailbox('sent')" id="btn-mail-sent"
+              class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition">
+              📤 Sent
+            </button>
+          </div>
+          <button onclick="loadMailbox()" class="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white transition">
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Two-Pane Layout: List + Conversation Thread -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[620px]">
+        <!-- Left Pane: Thread List (4 cols) -->
+        <div class="glass-panel p-4 rounded-2xl lg:col-span-5 flex flex-col space-y-3">
+          <div class="relative">
+            <i data-lucide="search" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
+            <input type="text" id="mailbox-search" oninput="handleMailboxSearch(event)"
+              placeholder="Search by prospect name, company or email..."
+              class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+          </div>
+
+          <div id="mailbox-threads-container" class="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[560px]">
+            <div class="py-12 text-center text-slate-500 text-xs">Loading conversations...</div>
+          </div>
+        </div>
+
+        <!-- Right Pane: Active Thread & Quick Reply (7 cols) -->
+        <div class="glass-panel p-6 rounded-2xl lg:col-span-7 flex flex-col justify-between" id="mailbox-detail-panel">
+          <div id="mailbox-detail-empty" class="h-full flex flex-col items-center justify-center text-center p-8 space-y-3">
+            <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+              <i data-lucide="message-square" class="w-6 h-6"></i>
+            </div>
+            <h3 class="text-sm font-semibold text-white">Select a prospect thread</h3>
+            <p class="text-xs text-slate-400 max-w-sm">
+              Click any prospect on the left to review the full sent outreach copy, prospect reply status, and send 1-click follow-ups.
+            </p>
+          </div>
+
+          <!-- Active Conversation Body (Rendered Dynamically) -->
+          <div id="mailbox-detail-content" class="hidden space-y-4 flex-1 flex flex-col">
+            <!-- Prospect Header -->
+            <div class="flex items-start justify-between pb-4 border-b border-slate-800">
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 id="thread-contact-name" class="text-base font-bold text-white">Tyler Green</h3>
+                  <span id="thread-hot-badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">🔥 Hot</span>
+                  <span id="thread-campaign-badge" class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">FindMyFuture</span>
+                </div>
+                <p class="text-xs text-slate-400 mt-0.5">
+                  <span id="thread-job-title" class="text-slate-300">CTO</span> at <span id="thread-company" class="font-medium text-white">NexoFlow</span>
+                  (<a id="thread-email" href="#" class="text-indigo-400 hover:underline">tyler@nexoflow.tech</a>)
+                </p>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button onclick="toggleHotTag()" id="btn-toggle-hot" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition flex items-center gap-1">
+                  <i data-lucide="flame" class="w-3.5 h-3.5"></i> Hot
+                </button>
+                <button onclick="markMeetingBooked()" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition flex items-center gap-1">
+                  <i data-lucide="calendar" class="w-3.5 h-3.5"></i> Booked
+                </button>
+              </div>
+            </div>
+
+            <!-- "Nudge Tyler?" Smart Action Card (matching Explee screenshot) -->
+            <div id="thread-nudge-card" class="p-3.5 rounded-xl bg-gradient-to-r from-indigo-950/40 via-purple-950/20 to-slate-900 border border-indigo-500/30 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
+                  <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-400"></i> Nudge Prospect (AI Recommendation)
+                </span>
+                <span class="text-[11px] text-slate-400">Includes booking CTA</span>
+              </div>
+              <p id="thread-nudge-snippet" class="text-xs text-slate-300 bg-slate-900/60 p-2.5 rounded-lg border border-slate-800 font-mono text-[11px] leading-relaxed">
+                "Hi Tyler, Sounds good. Easiest is to grab a quick 15-minute slot here: https://cal.viktron.ai/vikash/15min"
+              </p>
+              <div class="flex items-center gap-2 pt-1">
+                <button onclick="applyNudgeCopy()" class="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition flex items-center gap-1">
+                  <i data-lucide="check" class="w-3.5 h-3.5"></i> Insert Nudge Into Composer
+                </button>
+                <button onclick="dismissNudgeCard()" class="px-2.5 py-1 rounded-lg text-xs text-slate-400 hover:text-white transition">
+                  Not needed
+                </button>
+              </div>
+            </div>
+
+            <!-- Thread Messages History -->
+            <div id="thread-messages-list" class="space-y-3 flex-1 overflow-y-auto max-h-[300px] pr-1">
+              <!-- Rendered dynamically -->
+            </div>
+
+            <!-- Reply Box -->
+            <div class="pt-3 border-t border-slate-800 space-y-2">
+              <div class="flex items-center justify-between text-[11px] text-slate-400">
+                <span class="flex items-center gap-2">
+                  <span>From: <strong class="text-slate-200">outreach@getagentirl.online</strong></span>
+                  <span>Cc: <strong class="text-slate-200">vikash@viktron.ai</strong></span>
+                </span>
+                <button onclick="insertCalLink()" class="text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1">
+                  <i data-lucide="link" class="w-3 h-3"></i> + Add Cal.com Link
+                </button>
+              </div>
+
+              <textarea id="reply-body-input" rows="3"
+                placeholder="Write your reply or follow-up note..."
+                class="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-sans"></textarea>
+
+              <div class="flex items-center justify-between pt-1">
+                <span class="text-[11px] text-slate-500">
+                  Relayed via VPS Postfix (<code class="text-slate-400">100.120.229.126:25</code>) with DKIM/SPF
+                </span>
+                <button onclick="sendThreadReply()" id="btn-send-reply"
+                  class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-indigo-950 transition">
+                  <i data-lucide="send" class="w-3.5 h-3.5"></i> Send Reply
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -634,16 +781,21 @@
     }
 
     function switchTab(tabId) {
-      ['dashboard', 'campaigns', 'leads', 'inboxes', 'settings'].forEach(t => {
-        document.getElementById(`view-${t}`).classList.add('hidden');
-        document.getElementById(`tab-${t}`).className = 'tab-btn px-3 py-2 rounded-lg text-sm font-medium transition text-slate-400 hover:text-white hover:bg-slate-800';
+      ['dashboard', 'campaigns', 'leads', 'mailbox', 'inboxes', 'settings'].forEach(t => {
+        const el = document.getElementById(`view-${t}`);
+        const btn = document.getElementById(`tab-${t}`);
+        if (el) el.classList.add('hidden');
+        if (btn) btn.className = 'tab-btn px-3 py-2 rounded-lg text-sm font-medium transition text-slate-400 hover:text-white hover:bg-slate-800';
       });
-      document.getElementById(`view-${tabId}`).classList.remove('hidden');
-      document.getElementById(`tab-${tabId}`).className = 'tab-btn px-3 py-2 rounded-lg text-sm font-medium transition text-indigo-400 bg-indigo-500/10';
+      const activeEl = document.getElementById(`view-${tabId}`);
+      const activeBtn = document.getElementById(`tab-${tabId}`);
+      if (activeEl) activeEl.classList.remove('hidden');
+      if (activeBtn) activeBtn.className = 'tab-btn px-3 py-2 rounded-lg text-sm font-medium transition text-indigo-400 bg-indigo-500/10';
 
       if (tabId === 'dashboard') loadDashboard();
       if (tabId === 'campaigns') loadCampaigns();
       if (tabId === 'leads') loadLeads();
+      if (tabId === 'mailbox') loadMailbox();
       if (tabId === 'inboxes') loadInboxes();
       if (tabId === 'settings') loadSettings();
     }
@@ -1275,6 +1427,260 @@
         showToast(`Configured ${domainName} on Cloudflare!`);
       } catch (err) {
         showToast('Cloudflare automation failed', 'error');
+      }
+    }
+
+    // ==========================================
+    // Unified Outreach Mailbox (Explee-style)
+    // ==========================================
+    let currentMailboxFolder = 'all';
+    let selectedLeadId = null;
+    let allMailboxThreads = [];
+    let activeThreadDetail = null;
+
+    async function loadMailbox(folder = null) {
+      if (folder) currentMailboxFolder = folder;
+      const search = document.getElementById('mailbox-search')?.value.trim() || '';
+      try {
+        const url = `/api/mailbox/threads?folder=${currentMailboxFolder}${search ? '&search=' + encodeURIComponent(search) : ''}`;
+        const res = await fetch(url);
+        allMailboxThreads = await res.json();
+
+        // Update nav badge with hot count
+        const hotCount = allMailboxThreads.filter(t => t.is_hot_lead || t.status === 'replied').length;
+        const badge = document.getElementById('nav-hot-badge');
+        if (badge) {
+          if (hotCount > 0) {
+            badge.innerText = `${hotCount} Hot`;
+            badge.classList.remove('hidden');
+          } else {
+            badge.classList.add('hidden');
+          }
+        }
+
+        renderMailboxThreads(allMailboxThreads);
+        if (selectedLeadId) {
+          selectThread(selectedLeadId);
+        } else if (allMailboxThreads.length > 0) {
+          selectThread(allMailboxThreads[0].id);
+        }
+      } catch (e) {
+        console.error('Mailbox error:', e);
+      }
+    }
+
+    function filterMailbox(folder) {
+      currentMailboxFolder = folder;
+      ['all', 'hot', 'sent'].forEach(f => {
+        const b = document.getElementById(`btn-mail-${f}`);
+        if (b) {
+          if (f === folder) {
+            b.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white transition';
+          } else {
+            b.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition';
+          }
+        }
+      });
+      loadMailbox(folder);
+    }
+
+    function handleMailboxSearch(e) {
+      loadMailbox();
+    }
+
+    function renderMailboxThreads(threads) {
+      const c = document.getElementById('mailbox-threads-container');
+      if (!c) return;
+      if (!threads.length) {
+        c.innerHTML = `<div class="py-12 text-center text-slate-500 text-xs">No conversation threads found. Dispatch an outreach batch to start conversations!</div>`;
+        return;
+      }
+      c.innerHTML = threads.map(t => {
+        const initials = (t.contact_name || 'U').split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase();
+        const isSelected = t.id === selectedLeadId;
+        const timeStr = t.sent_at ? new Date(t.sent_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Recent';
+        const isHot = t.is_hot_lead || t.status === 'replied';
+
+        return `
+          <div onclick="selectThread(${t.id})" 
+            class="p-3 rounded-xl cursor-pointer transition flex items-start gap-3 border ${
+              isSelected ? 'bg-indigo-950/40 border-indigo-500/50' : 'bg-slate-900/50 hover:bg-slate-800/60 border-slate-800/80'
+            }">
+            <div class="w-9 h-9 rounded-xl ${isHot ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-slate-800 text-slate-300 border border-slate-700'} flex items-center justify-center font-bold text-xs shrink-0">
+              ${initials}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between gap-1">
+                <span class="text-xs font-bold text-white truncate">${t.contact_name}</span>
+                <span class="text-[10px] text-slate-500 shrink-0">${timeStr}</span>
+              </div>
+              <div class="text-[11px] text-slate-400 truncate">${t.job_title} &bull; <span class="text-indigo-400">${t.company_name}</span></div>
+              <div class="text-[11px] text-slate-500 truncate mt-1">${t.snippet || t.subject}</div>
+              <div class="flex items-center gap-1.5 mt-2">
+                ${isHot ? `<span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">🔥 Hot</span>` : ''}
+                <span class="px-1.5 py-0.2 rounded text-[10px] text-slate-400 bg-slate-800 border border-slate-700">${t.campaign_name || 'Campaign'}</span>
+                <span class="text-[10px] text-slate-500 ml-auto">&bull; Step ${t.followup_step || 1}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    async function selectThread(leadId) {
+      selectedLeadId = leadId;
+      renderMailboxThreads(allMailboxThreads);
+      const emptyPanel = document.getElementById('mailbox-detail-empty');
+      const contentPanel = document.getElementById('mailbox-detail-content');
+
+      try {
+        const res = await fetch(`/api/mailbox/threads/${leadId}`);
+        if (!res.ok) return;
+        activeThreadDetail = await res.json();
+        const lead = activeThreadDetail.lead;
+
+        emptyPanel.classList.add('hidden');
+        contentPanel.classList.remove('hidden');
+
+        document.getElementById('thread-contact-name').innerText = lead.contact_name || 'Decision Maker';
+        document.getElementById('thread-job-title').innerText = lead.job_title || 'Executive';
+        document.getElementById('thread-company').innerText = lead.company_name || lead.company_domain;
+        document.getElementById('thread-email').innerText = lead.email;
+        document.getElementById('thread-email').href = `mailto:${lead.email}`;
+        document.getElementById('thread-campaign-badge').innerText = lead.campaign_name || 'Campaign';
+
+        const hotBadge = document.getElementById('thread-hot-badge');
+        if (lead.is_hot_lead) {
+          hotBadge.classList.remove('hidden');
+        } else {
+          hotBadge.classList.add('hidden');
+        }
+
+        // Setup Nudge snippet
+        document.getElementById('thread-nudge-snippet').innerText = activeThreadDetail.suggested_nudge;
+
+        // Render Conversation Messages
+        const msgList = document.getElementById('thread-messages-list');
+        msgList.innerHTML = `
+          <!-- Outbound Cold Pitch -->
+          <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between text-xs pb-2 border-b border-slate-800/80">
+              <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-[10px]">
+                  AI
+                </div>
+                <div>
+                  <span class="font-bold text-white">Alex Morgan</span>
+                  <span class="text-slate-500 text-[11px]">&lt;${lead.sent_from_inbox || 'outreach@getagentirl.online'}&gt;</span>
+                </div>
+              </div>
+              <div class="text-[11px] text-slate-500 flex items-center gap-1">
+                <span>${lead.sent_at ? new Date(lead.sent_at).toLocaleString() : 'Just now'}</span>
+                <span class="text-emerald-400 font-bold ml-1">✓ Delivered</span>
+              </div>
+            </div>
+            <div class="text-xs font-semibold text-slate-200">
+              Subject: ${lead.personalized_subject || 'Outreach Pitch'}
+            </div>
+            <div class="text-xs text-slate-300 font-sans whitespace-pre-wrap leading-relaxed">
+${lead.personalized_body || 'No message body available.'}
+            </div>
+          </div>
+
+          <!-- System routing note -->
+          <div class="flex items-center justify-center gap-2 text-[11px] text-slate-500 py-1">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>All replies automatically routed & CC'd to <b>vikash@viktron.ai</b></span>
+          </div>
+        `;
+        lucide.createIcons();
+      } catch (err) {
+        console.error('Thread detail error:', err);
+      }
+    }
+
+    function applyNudgeCopy() {
+      if (activeThreadDetail && activeThreadDetail.suggested_nudge) {
+        document.getElementById('reply-body-input').value = activeThreadDetail.suggested_nudge;
+        showToast('Nudge template loaded into reply composer!');
+      }
+    }
+
+    function dismissNudgeCard() {
+      document.getElementById('thread-nudge-card').classList.add('hidden');
+    }
+
+    function insertCalLink() {
+      const ta = document.getElementById('reply-body-input');
+      const link = (activeThreadDetail && activeThreadDetail.booking_url) || 'https://cal.viktron.ai/vikash/15min';
+      ta.value = ta.value ? `${ta.value}\n\nGrab a 15-min slot here: ${link}` : `Grab a 15-min slot here: ${link}`;
+      showToast('Booking link inserted!');
+    }
+
+    async function sendThreadReply() {
+      if (!selectedLeadId) return;
+      const body = document.getElementById('reply-body-input').value.trim();
+      if (!body) return showToast('Please enter a message to send', 'error');
+
+      const btn = document.getElementById('btn-send-reply');
+      btn.innerHTML = `<span class="animate-spin mr-1">&orarr;</span> Relaying...`;
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/mailbox/reply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lead_id: selectedLeadId,
+            body: body,
+            cc_email: 'vikash@viktron.ai'
+          })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(`Reply sent via VPS Relay to ${data.recipient}!`);
+          document.getElementById('reply-body-input').value = '';
+          selectThread(selectedLeadId);
+        } else {
+          showToast(data.detail || 'Failed to dispatch reply', 'error');
+        }
+      } catch (e) {
+        showToast('Relay connection error', 'error');
+      } finally {
+        btn.innerHTML = `<i data-lucide="send" class="w-3.5 h-3.5"></i> Send Reply`;
+        btn.disabled = false;
+        lucide.createIcons();
+      }
+    }
+
+    async function toggleHotTag() {
+      if (!selectedLeadId) return;
+      const lead = activeThreadDetail?.lead;
+      const newTag = lead?.is_hot_lead ? 'cleared' : 'hot';
+      const res = await fetch(`/api/mailbox/threads/${selectedLeadId}/tag`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tag: newTag })
+      });
+      if (res.ok) {
+        showToast(newTag === 'hot' ? 'Marked as 🔥 Hot Lead!' : 'Tag cleared');
+        loadMailbox();
+        selectThread(selectedLeadId);
+      }
+    }
+
+    async function markMeetingBooked() {
+      if (!selectedLeadId) return;
+      const res = await fetch(`/api/mailbox/threads/${selectedLeadId}/tag`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tag: 'meeting_booked' })
+      });
+      if (res.ok) {
+        showToast('Marked as 📅 Meeting Booked!');
+        loadMailbox();
+        selectThread(selectedLeadId);
       }
     }
 
