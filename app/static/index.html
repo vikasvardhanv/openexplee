@@ -680,8 +680,8 @@
             <td class="py-3 px-4">${c.total_leads || 0}</td>
             <td class="py-3 px-4 text-indigo-400 font-medium">${c.sent_count || 0}</td>
             <td class="py-3 px-4 text-right">
-              <button onclick="launchCampaign(${c.id})" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium">
-                Dispatch Batch
+              <button onclick="launchCampaign(${c.id})" class="px-3 py-1 ${c.total_leads > 0 && c.sent_count >= c.total_leads ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700' : 'bg-indigo-600 hover:bg-indigo-500 text-white'} rounded-lg text-xs font-medium">
+                ${c.total_leads > 0 && c.sent_count >= c.total_leads ? '✓ All Sent' : 'Dispatch Batch'}
               </button>
             </td>
           </tr>
@@ -731,17 +731,18 @@
             <h4 class="font-bold text-white text-sm">${c.name}</h4>
             <p class="text-xs text-slate-400 mt-0.5">${c.icp_prompt}</p>
             <div class="flex gap-2 text-xs text-slate-500 mt-2">
-              <span>Leads: <b>${c.total_leads}</b></span> &middot;
+              <span>Leads: <b>${c.total_leads || 0}</b></span> &middot;
               <span>Verified: <b>${c.verified_count || 0}</b></span> &middot;
+              <span>Sent: <b class="text-emerald-400">${c.sent_count || 0}</b></span> &middot;
               <span>Status: <b class="text-indigo-400">${c.status}</b></span>
             </div>
           </div>
-          <div class="flex gap-2">
+          <div class="flex gap-2 items-center">
             <button onclick="discoverCampaign(${c.id})" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold">
               Find Leads
             </button>
-            <button onclick="launchCampaign(${c.id})" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold">
-              Dispatch Batch
+            <button onclick="launchCampaign(${c.id})" class="px-3 py-1.5 ${c.total_leads > 0 && c.sent_count >= c.total_leads ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700' : 'bg-indigo-600 hover:bg-indigo-500 text-white'} rounded-lg text-xs font-semibold">
+              ${c.total_leads > 0 && c.sent_count >= c.total_leads ? '✓ All Sent' : 'Dispatch Batch'}
             </button>
             <button onclick="deleteCampaign(${c.id})" class="px-2 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs">
               Delete

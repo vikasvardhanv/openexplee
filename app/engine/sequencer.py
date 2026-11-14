@@ -265,9 +265,26 @@ async def dispatch_campaign_batch(campaign_id: int, limit: int = 10) -> Dict[str
     errors = []
 
     if not leads:
+        conn = await get_db_connection()
+        try:
+            cur_all = await conn.execute("SELECT COUNT(*) AS c FROM leads WHERE campaign_id = ?", (campaign_id,))
+            row_all = await cur_all.fetchone()
+            total_in_camp = row_all["c"] if row_all else 0
+
+            cur_sent = await conn.execute("SELECT COUNT(*) AS c FROM leads WHERE campaign_id = ? AND status = 'sent'", (campaign_id,))
+            row_sent = await cur_sent.fetchone()
+            sent_leads = row_sent["c"] if row_sent else 0
+        finally:
+            await conn.close()
+
+        if total_in_camp > 0 and sent_leads >= total_in_camp:
+            return {
+                "dispatched": 0,
+                "errors": [f"All {total_in_camp} leads in this campaign have already been dispatched! Click 'Find Leads' to discover more."]
+            }
         return {
             "dispatched": 0,
-            "errors": ["No queued or verified leads in this campaign yet. Run discovery or add leads first."]
+            "errors": ["No queued or verified leads in this campaign yet. Click 'Find Leads' first to discover prospects."]
         }
 
     for lead in leads:
