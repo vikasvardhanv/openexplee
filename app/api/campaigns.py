@@ -92,66 +92,95 @@ async def run_discovery_task(
     auto_send: bool = False,
     max_companies: int = 8,
 ):
+    # Set status to discovering
     conn = await get_db_connection()
     try:
         await conn.execute("UPDATE campaigns SET status = 'discovering' WHERE id = ?", (campaign_id,))
         await conn.commit()
+    finally:
+        await conn.close()
 
+    try:
         leads = await discover_leads_for_icp(icp_prompt, max_companies=max_companies)
 
+        enriched_leads = []
         for l in leads:
-            cursor = await conn.execute("""
-                INSERT INTO leads (
-                    campaign_id, company_name, company_domain, website_url,
-                    contact_name, job_title, email, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'discovered')
-            """, (
-                campaign_id, l["company_name"], l["company_domain"], l["website_url"],
-                l["contact_name"], l["job_title"], l["email"]
-            ))
-            lead_id = cursor.lastrowid
-
-            # Auto-verify candidate email
+            ver_status = "unverified"
+            ver_reason = ""
             if l.get("email"):
-                ver_res = await verify_email_smtp(l["email"])
-                await conn.execute("""
-                    UPDATE leads 
-                    SET verification_status = ?, verification_reason = ?
-                    WHERE id = ?
-                """, (ver_res["status"], ver_res.get("details", ""), lead_id))
+                try:
+                    ver_res = await verify_email_smtp(l["email"])
+                    ver_status = ver_res.get("status", "unverified")
+                    ver_reason = ver_res.get("details", "")
+                except Exception as ve:
+                    ver_reason = str(ve)
 
             # Auto-draft AI personalized email
-            email_draft = await generate_cold_email(
-                company_name=l["company_name"],
-                company_domain=l["company_domain"],
-                contact_name=l["contact_name"],
-                job_title=l["job_title"],
-                company_summary=l.get("summary", ""),
-                value_proposition=value_prop
-            )
-            await conn.execute("""
-                UPDATE leads 
-                SET personalized_subject = ?, personalized_body = ?, status = 'enriched'
-                WHERE id = ?
-            """, (email_draft.get("subject", ""), email_draft.get("body", ""), lead_id))
+            subject = f"quick question for {l['company_name']}"
+            body = f"Hi {l['contact_name'].split()[0] if l.get('contact_name') else 'there'},\n\nSaw what you are building at {l['company_name']} and wanted to connect."
+            try:
+                email_draft = await generate_cold_email(
+                    company_name=l["company_name"],
+                    company_domain=l["company_domain"],
+                    contact_name=l["contact_name"],
+                    job_title=l["job_title"],
+                    company_summary=l.get("summary", ""),
+                    value_proposition=value_prop
+                )
+                if email_draft.get("subject"):
+                    subject = email_draft["subject"]
+                if email_draft.get("body"):
+                    body = email_draft["body"]
+            except Exception as ge:
+                print(f"[Discovery] Copy generation note: {ge}")
 
-        await conn.execute("""
-            UPDATE campaigns 
-            SET total_leads = (SELECT COUNT(*) FROM leads WHERE campaign_id = ?),
-                status = 'ready'
-            WHERE id = ?
-        """, (campaign_id, campaign_id))
-        await conn.commit()
+            enriched_leads.append({
+                **l,
+                "verification_status": ver_status,
+                "verification_reason": ver_reason,
+                "personalized_subject": subject,
+                "personalized_body": body,
+            })
+
+        # Save to DB in one clean transaction
+        conn = await get_db_connection()
+        try:
+            for l in enriched_leads:
+                await conn.execute("""
+                    INSERT INTO leads (
+                        campaign_id, company_name, company_domain, website_url,
+                        contact_name, job_title, email, status,
+                        verification_status, verification_reason,
+                        personalized_subject, personalized_body
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'enriched', ?, ?, ?, ?)
+                """, (
+                    campaign_id, l["company_name"], l["company_domain"], l["website_url"],
+                    l["contact_name"], l["job_title"], l["email"],
+                    l["verification_status"], l["verification_reason"],
+                    l["personalized_subject"], l["personalized_body"]
+                ))
+
+            await conn.execute("""
+                UPDATE campaigns 
+                SET total_leads = (SELECT COUNT(*) FROM leads WHERE campaign_id = ?),
+                    status = 'ready'
+                WHERE id = ?
+            """, (campaign_id, campaign_id))
+            await conn.commit()
+        finally:
+            await conn.close()
 
         if auto_send:
             await dispatch_campaign_batch(campaign_id, limit=max_companies)
 
     except Exception as e:
         print(f"[Campaign Task Error]: {e}")
-        await conn.execute("UPDATE campaigns SET status = 'error' WHERE id = ?", (campaign_id,))
-        await conn.commit()
-    finally:
-        await conn.close()
+        conn = await get_db_connection()
+        try:
+            await conn.execute("UPDATE campaigns SET status = 'error' WHERE id = ?", (campaign_id,))
+            await conn.commit()
+        finally:
+            await conn.close()
 
 
 @router.get("")
@@ -201,6 +230,28 @@ async def get_campaign(campaign_id: int):
     result = dict(camp)
     result["leads"] = leads
     return result
+
+
+@router.post("/{campaign_id}/discover")
+async def trigger_campaign_discovery(campaign_id: int, background_tasks: BackgroundTasks):
+    conn = await get_db_connection()
+    try:
+        cursor = await conn.execute("SELECT * FROM campaigns WHERE id = ?", (campaign_id,))
+        camp = await cursor.fetchone()
+        if not camp:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+        camp_dict = dict(camp)
+    finally:
+        await conn.close()
+
+    background_tasks.add_task(
+        run_discovery_task,
+        campaign_id,
+        camp_dict["icp_prompt"],
+        camp_dict.get("value_proposition") or "",
+        False
+    )
+    return {"id": campaign_id, "status": "discovering"}
 
 
 @router.post("/{campaign_id}/launch")

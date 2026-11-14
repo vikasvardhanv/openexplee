@@ -25,13 +25,12 @@ interface SendPayload {
   html?: string;
 }
 
-function normalizeRecipients(value?: string | string[]): Array<{ email: string }> {
+function normalizeRecipients(value?: string | string[]): string[] {
   if (!value) return [];
   const items = Array.isArray(value) ? value : value.split(",");
   return items
     .map((entry) => entry.trim())
-    .filter((entry) => entry.includes("@"))
-    .map((email) => ({ email }));
+    .filter((entry) => entry.includes("@"));
 }
 
 function jsonResponse(data: unknown, status = 200): Response {
@@ -72,20 +71,20 @@ export default {
       }
 
       const emailParams: Record<string, unknown> = {
-        from: payload.fromName ? { email: payload.from, name: payload.fromName } : { email: payload.from },
+        from: payload.fromName ? { email: payload.from, name: payload.fromName } : payload.from,
         to: toList,
         subject: payload.subject,
       };
 
       const ccList = normalizeRecipients(payload.cc);
       if (ccList.length > 0) emailParams.cc = ccList;
-      if (payload.replyTo) emailParams.replyTo = { email: payload.replyTo };
+      if (payload.replyTo) emailParams.replyTo = payload.replyTo;
       if (payload.text) emailParams.text = payload.text;
       if (payload.html) emailParams.html = payload.html;
 
       try {
         await env.EMAIL.send(emailParams);
-        return jsonResponse({ ok: true, from: payload.from, to: toList.map((r) => r.email) });
+        return jsonResponse({ ok: true, from: payload.from, to: toList });
       } catch (err) {
         const message = err instanceof Error ? err.message : "Cloudflare Email send failed";
         return jsonResponse({ ok: false, error: message }, 502);

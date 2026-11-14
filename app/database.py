@@ -127,12 +127,16 @@ async def init_db():
             except Exception:
                 pass
 
+        # A discovery task dies with the server. On start, nothing can still be discovering.
+        await db.execute("UPDATE campaigns SET status = 'error' WHERE status = 'discovering'")
         await db.commit()
 
 
 async def get_db_connection() -> aiosqlite.Connection:
     conn = await aiosqlite.connect(DB_FILE)
     conn.row_factory = aiosqlite.Row
+    await conn.execute("PRAGMA journal_mode=WAL;")
+    await conn.execute("PRAGMA busy_timeout = 10000;")
     await conn.execute("PRAGMA foreign_keys=ON;")
     return conn
 

@@ -27,7 +27,7 @@ def _extract_json_blob(text: str) -> Any:
     raise ValueError("No valid JSON found in LLM response")
 
 
-async def _call_claude_cli(prompt: str, timeout: float = 45.0) -> Optional[str]:
+async def _call_claude_cli(prompt: str, timeout: float = 90.0) -> Optional[str]:
     """Runs `claude -p` using the active local Claude Code subscription ($0 API cost)."""
     claude_bin = shutil.which("claude")
     if not claude_bin:
@@ -54,7 +54,7 @@ async def _call_claude_cli(prompt: str, timeout: float = 45.0) -> Optional[str]:
     return stdout.decode(errors="ignore").strip()
 
 
-async def _call_openai_compatible(base_url: str, model: str, prompt: str, api_key: Optional[str] = None, json_mode: bool = False) -> Optional[str]:
+async def _call_openai_compatible(base_url: str, model: str, prompt: str, api_key: Optional[str] = None, json_mode: bool = False, timeout: float = 60.0) -> Optional[str]:
     headers = {"Content-Type": "application/json"}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
@@ -65,7 +65,7 @@ async def _call_openai_compatible(base_url: str, model: str, prompt: str, api_ke
     if json_mode:
         payload["response_format"] = {"type": "json_object"}
 
-    async with httpx.AsyncClient(timeout=35.0) as client:
+    async with httpx.AsyncClient(timeout=timeout) as client:
         resp = await client.post(f"{base_url.rstrip('/')}/v1/chat/completions", headers=headers, json=payload)
         if resp.status_code == 200:
             return resp.json()["choices"][0]["message"]["content"]

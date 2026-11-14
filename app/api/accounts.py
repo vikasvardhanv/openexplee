@@ -141,10 +141,11 @@ async def test_inbox_connection(inbox_id: int):
             timeout=10.0
         )
         await smtp_client.connect()
-        await smtp_client.login(inbox["smtp_user"], inbox["smtp_password"])
+        if inbox.get("smtp_user") and inbox["smtp_user"] != "none" and inbox.get("smtp_password") and inbox["smtp_password"] != "none":
+            await smtp_client.login(inbox["smtp_user"], inbox["smtp_password"])
         await smtp_client.quit()
 
-        return {"connected": True, "message": "SMTP connection & authentication successful!"}
+        return {"connected": True, "message": "SMTP Relay connection successful & verified!"}
     except Exception as e:
         return {"connected": False, "error": str(e)}
 

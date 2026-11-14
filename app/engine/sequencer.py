@@ -14,53 +14,53 @@ from app.config import settings
 async def get_next_available_inbox() -> Optional[Dict[str, Any]]:
     """Retrieves an active inbox that has not exceeded its daily send quota."""
     conn = await get_db_connection()
-    async with conn.cursor() as cursor:
-        await cursor.execute("""
+    try:
+        cur = await conn.execute("""
             SELECT * FROM inboxes 
             WHERE status = 'active' AND sent_today < daily_quota 
             ORDER BY last_sent_at ASC NULLS FIRST, id ASC 
             LIMIT 1
         """)
-        row = await cursor.fetchone()
-        await conn.close()
+        row = await cur.fetchone()
         if row:
             return dict(row)
-    return None
+        return None
+    finally:
+        await conn.close()
 
 
 async def _record_send_success(inbox_id: int, inbox_email: str, lead_id: Optional[int]) -> None:
     """Updates inbox daily quota, lead status, and campaign counters after delivery."""
     conn = await get_db_connection()
     try:
-        async with conn.cursor() as cursor:
-            await cursor.execute("""
-                UPDATE inboxes 
-                SET sent_today = sent_today + 1, last_sent_at = CURRENT_TIMESTAMP 
+        await conn.execute("""
+            UPDATE inboxes 
+            SET sent_today = sent_today + 1, last_sent_at = CURRENT_TIMESTAMP 
+            WHERE id = ?
+        """, (inbox_id,))
+
+        if lead_id:
+            await conn.execute("""
+                UPDATE leads 
+                SET status = 'sent',
+                    sent_at = CURRENT_TIMESTAMP,
+                    sent_from_inbox = ?,
+                    followup_step = COALESCE(followup_step, 0) + 1,
+                    next_followup_at = CASE
+                        WHEN COALESCE(followup_step, 0) = 0 THEN datetime('now', '+3 days')
+                        WHEN COALESCE(followup_step, 0) = 1 THEN datetime('now', '+4 days')
+                        ELSE NULL
+                    END
                 WHERE id = ?
-            """, (inbox_id,))
+            """, (inbox_email, lead_id))
 
-            if lead_id:
-                await cursor.execute("""
-                    UPDATE leads 
-                    SET status = 'sent',
-                        sent_at = CURRENT_TIMESTAMP,
-                        sent_from_inbox = ?,
-                        followup_step = COALESCE(followup_step, 0) + 1,
-                        next_followup_at = CASE
-                            WHEN COALESCE(followup_step, 0) = 0 THEN datetime('now', '+3 days')
-                            WHEN COALESCE(followup_step, 0) = 1 THEN datetime('now', '+4 days')
-                            ELSE NULL
-                        END
-                    WHERE id = ?
-                """, (inbox_email, lead_id))
+            await conn.execute("""
+                UPDATE campaigns 
+                SET sent_count = sent_count + 1 
+                WHERE id = (SELECT campaign_id FROM leads WHERE id = ?)
+            """, (lead_id,))
 
-                await cursor.execute("""
-                    UPDATE campaigns 
-                    SET sent_count = sent_count + 1 
-                    WHERE id = (SELECT campaign_id FROM leads WHERE id = ?)
-                """, (lead_id,))
-
-            await conn.commit()
+        await conn.commit()
     finally:
         await conn.close()
 
@@ -158,7 +158,8 @@ async def _send_via_smtp(
         timeout=15.0
     )
     await smtp_client.connect()
-    await smtp_client.login(inbox["smtp_user"], inbox["smtp_password"])
+    if inbox.get("smtp_user") and inbox["smtp_user"] != "none" and inbox.get("smtp_password") and inbox["smtp_password"] != "none":
+        await smtp_client.login(inbox["smtp_user"], inbox["smtp_password"])
     await smtp_client.send_message(msg)
     await smtp_client.quit()
 
@@ -240,20 +241,27 @@ async def dispatch_campaign_batch(campaign_id: int, limit: int = 10) -> Dict[str
     Blocks invalid emails automatically to protect sender domain reputation.
     """
     conn = await get_db_connection()
-    async with conn.cursor() as cursor:
-        await cursor.execute("""
+    try:
+        cur = await conn.execute("""
             SELECT * FROM leads 
             WHERE campaign_id = ?
-              AND status IN ('enriched', 'queued')
+              AND status IN ('enriched', 'queued', 'discovered')
               AND verification_status != 'invalid'
               AND email IS NOT NULL AND email != ''
             LIMIT ?
         """, (campaign_id, limit))
-        leads = [dict(r) for r in await cursor.fetchall()]
+        leads = [dict(r) for r in await cur.fetchall()]
+    finally:
         await conn.close()
 
     dispatched = 0
     errors = []
+
+    if not leads:
+        return {
+            "dispatched": 0,
+            "errors": ["No queued or verified leads in this campaign yet. Run discovery or add leads first."]
+        }
 
     for lead in leads:
         inbox = await get_next_available_inbox()

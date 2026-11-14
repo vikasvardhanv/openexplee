@@ -1,7 +1,8 @@
 import httpx
 import json
 import re
-from urllib.parse import urlparse, quote_plus
+import base64
+from urllib.parse import urlparse, quote_plus, parse_qs
 from bs4 import BeautifulSoup
 from typing import List, Dict, Any, Optional, Set
 from app.config import settings
@@ -78,27 +79,83 @@ async def search_duckduckgo(query: str, max_results: int = 10) -> List[Dict[str,
                 links = soup.find_all("a", class_="result__snippet")
                 titles = soup.find_all("a", class_="result__url")
                 
-                # Alternate parsing for DDG HTML layout
+                # Extract from result__url and standard links
+                skip_hosts = {"duckduckgo.com", "bing.com", "doubleclick.net", "google.com", "yahoo.com", "youtube.com", "facebook.com", "twitter.com", "x.com"}
                 for a in soup.find_all("a", href=True):
                     href = a["href"]
-                    # DDG uddg redirect format
+                    real_url = None
                     if "uddg=" in href:
-                        real_url = href.split("uddg=")[-1].split("&")[0]
+                        raw = href.split("uddg=")[-1].split("&")[0]
                         from urllib.parse import unquote
-                        real_url = unquote(real_url)
+                        real_url = unquote(raw)
+                    elif href.startswith("http://") or href.startswith("https://"):
+                        real_url = href
+
+                    if real_url:
                         parsed = urlparse(real_url)
-                        if parsed.netloc and not any(skip in parsed.netloc for skip in ["duckduckgo", "google", "bing", "yahoo", "youtube", "facebook", "twitter", "linkedin.com/posts"]):
-                            title = a.get_text(strip=True)
-                            if len(title) > 3 and not any(r["url"] == real_url for r in results):
+                        domain = parsed.netloc.replace("www.", "").lower()
+                        if domain and not any(skip in domain for skip in skip_hosts) and not domain.endswith(".edu") and not domain.endswith(".gov"):
+                            title = a.get_text(strip=True) or domain
+                            if not any(r["domain"] == domain for r in results):
                                 results.append({
-                                    "title": title,
-                                    "url": real_url,
-                                    "domain": parsed.netloc.replace("www.", "")
+                                    "title": title[:100],
+                                    "url": f"{parsed.scheme}://{parsed.netloc}{parsed.path}",
+                                    "domain": domain
                                 })
                     if len(results) >= max_results:
                         break
     except Exception as e:
         print(f"[Discovery] DuckDuckGo search error: {e}")
+
+    return results
+
+
+async def search_bing(query: str, max_results: int = 10) -> List[Dict[str, str]]:
+    """
+    Organic web search fallback via Bing HTML with redirect decoding.
+    """
+    results = []
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+    encoded = quote_plus(query)
+    try:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True, headers=headers) as client:
+            resp = await client.get(f"https://www.bing.com/search?q={encoded}")
+            if resp.status_code == 200:
+                soup = BeautifulSoup(resp.text, "html.parser")
+                for li in soup.find_all("li", class_="b_algo"):
+                    h2 = li.find("h2")
+                    a = h2.find("a") if h2 else None
+                    if not a or not a.get("href"):
+                        continue
+                    href = a["href"]
+                    title = a.get_text(strip=True)
+                    real_url = href
+                    if "/ck/a?" in href:
+                        parsed_q = parse_qs(urlparse(href).query)
+                        u_val = parsed_q.get("u", [""])[0]
+                        if u_val and len(u_val) > 2:
+                            try:
+                                b64 = u_val[2:] + "=" * (-len(u_val[2:]) % 4)
+                                decoded = base64.b64decode(b64).decode("utf-8", errors="ignore")
+                                if decoded.startswith("http"):
+                                    real_url = decoded
+                            except Exception:
+                                pass
+                    parsed_dest = urlparse(real_url)
+                    domain = parsed_dest.netloc.replace("www.", "").lower()
+                    if domain and "bing.com" not in domain:
+                        results.append({
+                            "title": title[:100],
+                            "url": f"{parsed_dest.scheme}://{parsed_dest.netloc}{parsed_dest.path}",
+                            "domain": domain
+                        })
+                    if len(results) >= max_results:
+                        break
+    except Exception as e:
+        print(f"[Discovery] Bing search error: {e}")
 
     return results
 
@@ -189,23 +246,79 @@ async def search_people_by_domains(
     return contacts
 
 
+# Hosts that list or write about companies. A lead must be the company's own site.
+NON_COMPANY_HOSTS = (
+    "linkedin.", "indeed.", "glassdoor.", "ziprecruiter.", "builtin.", "wellfound.", "angel.co", "startup.jobs",
+    "joinhandshake.", "monster.", "simplyhired.", "lever.co", "greenhouse.io", "ashbyhq.", "workable.",
+    "ycombinator.", "crunchbase.", "g2.com", "capterra.", "producthunt.", "zoominfo.", "getlatka.", "clutch.co",
+    "forbes.", "techcrunch.", "medium.", "substack.", "reddit.", "quora.", "wikipedia.", "github.",
+    "nytimes.", "wsj.", "bloomberg.", "businessinsider.", "inc.com", "entrepreneur.", "cnbc.",
+    "google.", "bing.", "yahoo.", "duckduckgo.", "msn.", "ibm.", "microsoft.", "apple.", "amazon.",
+    "merriam-webster.", "cambridge.", "thesaurus.", "britannica.", ".edu", ".gov", ".ac.uk",
+)
+
+
+async def _search_queries_for_icp(icp_prompt: str) -> List[str]:
+    """Turns a long plain-English ICP into short web searches that return company homepages.
+    A whole ICP paragraph as one query returns list articles and job boards, not companies."""
+    from app.engine.llm import call_llm_json
+
+    parsed = await call_llm_json(
+        "Write 4 short web search queries (3 to 7 words each) that return the homepages of companies "
+        f"matching this target customer description:\n{icp_prompt}\n\n"
+        "Each query names one kind of company or product, not people and not the word 'companies'. "
+        'Return ONLY a JSON array of strings, for example ["ai code review tool startup"].'
+    )
+    queries = [q.strip() for q in parsed if isinstance(q, str) and q.strip()][:4] if isinstance(parsed, list) else []
+    # No LLM answer: the first words of the ICP still beat the whole paragraph.
+    return queries or [" ".join(icp_prompt.split()[:10])]
+
+
+async def _suggest_domains_via_llm(icp_prompt: str, count: int = 8) -> List[Dict[str, str]]:
+    """Identifies real active company domains matching the ICP using LLM intelligence."""
+    from app.engine.llm import call_llm_json
+
+    prompt = (
+        f"You are a sales intelligence engine. Given this Ideal Customer Profile:\n'{icp_prompt}'\n\n"
+        f"Name {count} real, active companies or startups (no job boards, no aggregators, no universities) that match.\n"
+        'Return ONLY a JSON array of objects: [{"company_name": "...", "domain": "..."}].'
+    )
+    parsed = await call_llm_json(prompt)
+    if isinstance(parsed, list):
+        clean = []
+        for item in parsed:
+            if isinstance(item, dict) and item.get("domain"):
+                d = item["domain"].lower().replace("https://", "").replace("http://", "").replace("www.", "").strip("/ ")
+                name = item.get("company_name") or d
+                clean.append({"title": name, "domain": d, "url": f"https://{d}"})
+        return clean
+    return []
+
+
 async def discover_leads_for_icp(icp_prompt: str, max_companies: int = 10) -> List[Dict[str, Any]]:
     """
     Takes a natural-language ICP (e.g. 'B2B SaaS companies in California using Stripe')
     and discovers target companies, decision-makers, and verified emails.
     """
     suppressed_domains = await _get_suppressed_domains()
-    search_query = f"{icp_prompt} company -directory -jobs -wikipedia"
 
-    # 1. Execute Search
+    # 1. Gather candidate domains from AI domain intelligence and web search
     raw_results = []
-    if settings.serper_api_key:
-        raw_results = await search_serper(search_query, settings.serper_api_key, max_companies * 2)
+    llm_domains = await _suggest_domains_via_llm(icp_prompt, count=max_companies)
+    raw_results.extend(llm_domains)
 
-    if not raw_results:
-        raw_results = await search_duckduckgo(search_query, max_companies * 2)
+    # 2. Execute Web Search across search engines to discover additional organic hits
+    for search_query in await _search_queries_for_icp(icp_prompt):
+        found = []
+        if settings.serper_api_key:
+            found = await search_serper(search_query, settings.serper_api_key, max_companies * 2)
+        if not found:
+            found = await search_bing(search_query, max_companies * 2)
+        if not found:
+            found = await search_duckduckgo(search_query, max_companies * 2)
+        raw_results.extend(found)
 
-    # 2. Filter, Deduplicate & Enforce Suppression List
+    # 3. Filter, Deduplicate & Enforce Suppression List
     seen_domains = set()
     candidate_sites = []
     for r in raw_results:
@@ -214,18 +327,20 @@ async def discover_leads_for_icp(icp_prompt: str, max_companies: int = 10) -> Li
             d
             and d not in seen_domains
             and d not in suppressed_domains
-            and not any(skip in d for skip in ["medium.com", "crunchbase", "reddit", "quora", "github"])
+            and not any(skip in d for skip in NON_COMPANY_HOSTS)
         ):
             seen_domains.add(d)
             candidate_sites.append(r)
         if len(candidate_sites) >= max_companies:
             break
 
-    # 3. Deep Crawl Each Site & Extract Decision-Makers
+    # 4. Deep Crawl Each Site & Extract Decision-Makers
     discovered_leads = []
     for site in candidate_sites:
         intel = await scrape_company_website(site["url"])
         domain = intel["domain"]
+        # Sites carry placeholder and third-party addresses (you@yourcompany.com). Keep the company's own.
+        intel["found_emails"] = [e for e in intel.get("found_emails", []) if e.endswith("@" + domain) or e.endswith("." + domain)]
         company_name = site.get("title", "").split("-")[0].split("|")[0].strip() or domain
 
         people = await _extract_people_with_llm(domain, intel.get("content_summary", ""))
@@ -235,10 +350,15 @@ async def discover_leads_for_icp(icp_prompt: str, max_companies: int = 10) -> Li
             job_title = p.get("job_title", "Decision Maker")
             enriched = await enrich_person_email(p["first_name"], p["last_name"], domain)
             email_candidate = enriched.get("email") or (intel["found_emails"][0] if intel.get("found_emails") else f"hello@{domain}")
-        else:
+        elif intel.get("found_emails"):
             contact_name = "Founder / Growth Lead"
             job_title = "Decision Maker"
-            email_candidate = intel["found_emails"][0] if intel.get("found_emails") else f"hello@{domain}"
+            email_candidate = intel["found_emails"][0]
+        else:
+            # Fall back to role-based address at the verified domain
+            contact_name = f"Founder / Hiring Lead"
+            job_title = "Decision Maker"
+            email_candidate = f"contact@{domain}"
 
         discovered_leads.append({
             "company_name": company_name,

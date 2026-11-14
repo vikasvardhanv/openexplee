@@ -729,6 +729,9 @@
             </div>
           </div>
           <div class="flex gap-2">
+            <button onclick="discoverCampaign(${c.id})" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold">
+              Find Leads
+            </button>
             <button onclick="launchCampaign(${c.id})" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold">
               Dispatch Batch
             </button>
@@ -740,15 +743,26 @@
       `).join('');
     }
 
+    async function discoverCampaign(id) {
+      showToast('Finding & verifying leads for this campaign in background...');
+      const res = await fetch(`/api/campaigns/${id}/discover`, { method: 'POST' });
+      if (res.ok) {
+        showToast('Lead discovery & verification in progress!');
+        setTimeout(loadCampaigns, 2000);
+      }
+    }
+
     async function launchCampaign(id) {
+      showToast('Dispatching batch through Relay...');
       const res = await fetch(`/api/campaigns/${id}/launch`, { method: 'POST' });
       const data = await res.json();
       if (data.dispatched > 0) {
-        showToast(`Dispatched ${data.dispatched} personalized emails across your inboxes!`);
+        showToast(`Dispatched ${data.dispatched} personalized emails via ${data.inbox || 'Relay'}!`);
       } else {
         showToast(data.errors?.[0] || 'No queued leads or inboxes available', 'error');
       }
       loadDashboard();
+      loadCampaigns();
     }
 
     async function deleteCampaign(id) {
