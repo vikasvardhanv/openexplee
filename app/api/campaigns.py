@@ -188,13 +188,36 @@ async def list_campaigns():
     conn = await get_db_connection()
     cursor = await conn.execute("""
         SELECT c.*, 
-            (SELECT COUNT(*) FROM leads l WHERE l.campaign_id = c.id AND l.verification_status IN ('verified', 'deliverable')) as verified_count
+            (SELECT COUNT(*) FROM leads l WHERE l.campaign_id = c.id AND l.verification_status IN ('verified', 'deliverable')) as verified_count,
+            (SELECT COUNT(*) FROM leads l WHERE l.campaign_id = c.id AND l.status = 'sent') as sent_leads_count,
+            (SELECT COUNT(*) FROM leads l WHERE l.campaign_id = c.id AND l.status IN ('enriched', 'queued', 'discovered') AND l.verification_status != 'invalid' AND l.email IS NOT NULL AND l.email != '') as ready_leads_count
         FROM campaigns c
         ORDER BY c.created_at DESC
     """)
     rows = await cursor.fetchall()
     await conn.close()
-    return [dict(r) for r in rows]
+
+    result = []
+    for r in rows:
+        d = dict(r)
+        total = d.get("total_leads") or 0
+        sent = d.get("sent_count") or d.get("sent_leads_count") or 0
+        raw_status = d.get("status", "draft")
+
+        # Determine real-time display status
+        if raw_status in ("discovering", "sending"):
+            d["display_status"] = raw_status
+        elif total == 0:
+            d["display_status"] = "no_leads"
+        elif total > 0 and sent >= total:
+            d["display_status"] = "completed"
+        elif total > 0 and sent < total:
+            d["display_status"] = "ready"
+        else:
+            d["display_status"] = raw_status
+
+        result.append(d)
+    return result
 
 
 @router.post("")
@@ -254,10 +277,77 @@ async def trigger_campaign_discovery(campaign_id: int, background_tasks: Backgro
     return {"id": campaign_id, "status": "discovering"}
 
 
+async def _run_campaign_dispatch_background(campaign_id: int, limit: int = 20):
+    try:
+        await dispatch_campaign_batch(campaign_id, limit=limit)
+    except Exception as e:
+        print(f"[Sequencer Background Error]: {e}")
+    finally:
+        conn = await get_db_connection()
+        try:
+            cur = await conn.execute("SELECT COUNT(*) as tot, (SELECT COUNT(*) FROM leads WHERE campaign_id = ? AND status = 'sent') as snt FROM leads WHERE campaign_id = ?", (campaign_id, campaign_id))
+            r = await cur.fetchone()
+            tot = r["tot"] if r else 0
+            snt = r["snt"] if r else 0
+            new_status = "completed" if (tot > 0 and snt >= tot) else "ready"
+            await conn.execute("UPDATE campaigns SET status = ?, sent_count = ? WHERE id = ?", (new_status, snt, campaign_id))
+            await conn.commit()
+        finally:
+            await conn.close()
+
+
 @router.post("/{campaign_id}/launch")
-async def launch_campaign(campaign_id: int):
-    res = await dispatch_campaign_batch(campaign_id, limit=20)
-    return res
+async def launch_campaign(campaign_id: int, background_tasks: BackgroundTasks):
+    conn = await get_db_connection()
+    try:
+        cur = await conn.execute("""
+            SELECT 
+                (SELECT COUNT(*) FROM leads WHERE campaign_id = ? AND status IN ('enriched', 'queued', 'discovered') AND verification_status != 'invalid' AND email IS NOT NULL AND email != '') as sendable,
+                (SELECT COUNT(*) FROM leads WHERE campaign_id = ?) as total,
+                (SELECT COUNT(*) FROM leads WHERE campaign_id = ? AND status = 'sent') as sent
+        """, (campaign_id, campaign_id, campaign_id))
+        row = await cur.fetchone()
+        sendable = row["sendable"] if row else 0
+        total = row["total"] if row else 0
+        sent = row["sent"] if row else 0
+
+        camp_cur = await conn.execute("SELECT status FROM campaigns WHERE id = ?", (campaign_id,))
+        camp_row = await camp_cur.fetchone()
+        current_status = camp_row["status"] if camp_row else "draft"
+    finally:
+        await conn.close()
+
+    if current_status == "sending":
+        return {"status": "sending", "message": "Campaign is already dispatching emails in the background!"}
+    if current_status == "discovering":
+        return {"status": "discovering", "message": "Campaign is currently discovering leads. Please wait until discovery finishes."}
+
+    if sendable == 0:
+        if total > 0 and sent >= total:
+            return {
+                "dispatched": 0,
+                "status": "completed",
+                "message": f"All {total} leads in this campaign have already been dispatched!"
+            }
+        return {
+            "dispatched": 0,
+            "status": "no_leads",
+            "message": "No leads in this campaign yet. Click 'Find Leads' first to discover prospects."
+        }
+
+    conn = await get_db_connection()
+    try:
+        await conn.execute("UPDATE campaigns SET status = 'sending' WHERE id = ?", (campaign_id,))
+        await conn.commit()
+    finally:
+        await conn.close()
+
+    background_tasks.add_task(_run_campaign_dispatch_background, campaign_id, 20)
+    return {
+        "status": "sending",
+        "message": f"Started dispatching {sendable} emails in the background!",
+        "queue_count": sendable
+    }
 
 
 @router.delete("/{campaign_id}")
