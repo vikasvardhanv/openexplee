@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 import aiosmtplib
 import httpx
+import ssl
 from app.config import settings
 from app.database import get_db_connection
 from app.engine.warmup import check_domain_dns_health, simulate_warmup_tick
@@ -133,11 +134,16 @@ async def test_inbox_connection(inbox_id: int):
         use_tls = (port == 465)
         start_tls = (port == 587 or inbox.get("use_tls", 1))
 
+        tls_context = ssl.create_default_context()
+        tls_context.check_hostname = False
+        tls_context.verify_mode = ssl.CERT_NONE
+
         smtp_client = aiosmtplib.SMTP(
             hostname=inbox["smtp_host"],
             port=port,
             use_tls=use_tls,
             start_tls=start_tls,
+            tls_context=tls_context,
             timeout=10.0
         )
         await smtp_client.connect()

@@ -1,5 +1,6 @@
 import asyncio
 import random
+import ssl
 from email.message import EmailMessage
 from email.utils import make_msgid, formatdate
 from datetime import datetime
@@ -150,11 +151,17 @@ async def _send_via_smtp(
     use_tls = (port == 465)
     start_tls = (port == 587 or bool(inbox.get("use_tls", 1)))
 
+    # Configure TLS context to accept self-signed certificates on private/VPS relays
+    tls_context = ssl.create_default_context()
+    tls_context.check_hostname = False
+    tls_context.verify_mode = ssl.CERT_NONE
+
     smtp_client = aiosmtplib.SMTP(
         hostname=inbox["smtp_host"],
         port=port,
         use_tls=use_tls,
         start_tls=start_tls,
+        tls_context=tls_context,
         timeout=15.0
     )
     await smtp_client.connect()
