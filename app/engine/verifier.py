@@ -156,28 +156,27 @@ async def enrich_person_email(first_name: str, last_name: str, domain: str) -> D
     permutations and checks DNS MX + live SMTP handshake to find the best address.
     """
     candidates = generate_email_permutations(first_name, last_name, domain)
-    best_fallback: Optional[Dict[str, Any]] = None
 
     for candidate in candidates:
         res = await verify_email_smtp(candidate, timeout=5.0)
-        if res["status"] == "verified":
+        # Only a mailbox the mail server confirmed (or a catch-all domain) counts as found.
+        if res["status"] in ("verified", "catch_all"):
             return {**res, "candidates_tested": candidates}
-        if res["status"] in ("catch_all", "deliverable") and best_fallback is None:
-            best_fallback = {**res, "candidates_tested": candidates}
-            # Catch-all accepts any address, so no need to probe remaining patterns
-            if res["status"] == "catch_all":
-                return best_fallback
         if res["mx_host"] is None:
             # Domain has no MX records at all; stop probing permutations
             return {**res, "candidates_tested": [candidate]}
+        if res["status"] == "risky":
+            # The mail server could not be reached. The other patterns will fail the same way.
+            break
 
-    return best_fallback or {
+    # A name pattern nobody confirmed is a guess, and guesses bounce. Report it as not sendable.
+    return {
         "email": candidates[0] if candidates else None,
         "status": "invalid",
         "score": 0,
         "mx_host": None,
         "is_disposable": False,
-        "details": "No deliverable permutation found.",
+        "details": "Guessed from a name pattern. No mail server confirmed the mailbox.",
         "candidates_tested": candidates,
     }
 

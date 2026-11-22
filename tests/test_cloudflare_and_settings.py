@@ -95,8 +95,10 @@ async def run_checks():
     assert len(MCP_TOOLS) == 9
 
     # 6. Inbound webhook handler
+    settings.inbound_webhook_token = "check-token"
     wb_res = await handle_inbound_reply(
-        InboundWebhookPayload(from_email="Nobody <nobody_test_check@invalid.local>", to_email="ck@aspendash.com", subject="Re: Hi")
+        InboundWebhookPayload(from_email="Nobody <nobody_test_check@invalid.local>", to_email="ck@aspendash.com", subject="Re: Hi"),
+        authorization="Bearer check-token",
     )
     assert wb_res["ok"] is True and wb_res["sender"] == "nobody_test_check@invalid.local"
 
@@ -112,6 +114,15 @@ async def run_checks():
     with patch("app.engine.copywriter.call_llm_json", new=AsyncMock(return_value=None)):
         draft = await generate_cold_email("Acme", "acme.com", "Jane Doe", "CTO", "AI workflows", "Agent governance")
         assert "https://cal.viktron.ai/vikash/15min" in draft["body"]
+
+    # 9. An automatic answer is a fixed text: nothing the model writes reaches the prospect.
+    from app.engine import replies
+    lead = {"first_name": "Jane", "booking_url": "https://cal.example.com/x", "personalized_body": "hi"}
+    with patch.object(replies, "call_llm_json", new=AsyncMock(return_value={"intent": "question", "reply": "We support everything!"})):
+        answer = await replies._draft_reply(lead, "Does it work with X?")
+    assert "support everything" not in answer["reply"] and "https://cal.example.com/x" in answer["reply"]
+    with patch.object(replies, "call_llm_json", new=AsyncMock(return_value={"intent": "not_now"})):
+        assert (await replies._draft_reply(lead, "later"))["reply"] == ""
 
     print("ALL CHECKS PASSED!")
 
