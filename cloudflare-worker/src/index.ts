@@ -110,7 +110,13 @@ export default {
       // keep the default inbox when FORWARD_MAP is not valid JSON
     }
     if (forwardTo) {
-      await message.forward(forwardTo);
+      // Cloudflare refuses to forward some mail (a bounce notice from our own relay has no
+      // sender to authenticate). The app must still receive it, or the bounce is never recorded.
+      try {
+        await message.forward(forwardTo);
+      } catch (err) {
+        console.log(`Forward to inbox failed, app hand-off continues: ${err}`);
+      }
     }
 
     if (env.OPENEXPLEE_WEBHOOK_URL) {

@@ -45,7 +45,13 @@ async def _extract_people_with_llm(domain: str, text: str, job_titles: Optional[
         )
         parsed = await call_llm_json(prompt)
         if isinstance(parsed, list):
-            extracted = [p for p in parsed if isinstance(p, dict) and p.get("first_name") and p.get("last_name")]
+            # The model sometimes answers "Unknown Unknown" or "Not Present". Keep only names the page shows.
+            page = text.lower()
+            extracted = [
+                p for p in parsed
+                if isinstance(p, dict) and p.get("first_name") and p.get("last_name")
+                and str(p["first_name"]).lower() in page and str(p["last_name"]).lower() in page
+            ]
             if extracted:
                 return extracted[:5]
 
@@ -372,6 +378,27 @@ async def _suggest_domains_via_llm(icp_prompt: str, count: int = 8) -> List[Dict
     return clean[:count]
 
 
+async def _is_target_company(icp_prompt: str, name: str, domain: str, page_text: str) -> bool:
+    """Reads the live page and says if the site is the company's own and fits the ICP.
+    The domain suggestions come from model memory, so some are invented, parked, or another company."""
+    from app.engine.llm import call_llm_json
+
+    parsed = await call_llm_json(
+        f"Target customer description:\n{icp_prompt}\n\n"
+        f"Website: {domain}\nText from the website:\n{page_text[:2000]}\n\n"
+        "Could the company that owns this website be a customer matching the description? Answer true when unsure. "
+        "Answer false only when the text clearly shows a directory or listing site, a news or blog site, "
+        "a tutorial site, a job board, a parked or for-sale domain, or a company far larger than the description.\n"
+        'Return ONLY valid JSON: {"fit": true or false, "reason": "..."}'
+    )
+    if isinstance(parsed, dict) and parsed.get("fit") is False:
+        print(f"[Discovery] Skipped {domain}: {parsed.get('reason', 'not a target company')}")
+        return False
+    # ponytail: no model answer keeps the company. Sending is gated on a confirmed address,
+    # so a wrong company here costs a draft, not a bounce. Upgrade: hold it for review instead.
+    return True
+
+
 async def discover_leads_for_icp(icp_prompt: str, max_companies: int = 10) -> List[Dict[str, Any]]:
     """
     Takes a natural-language ICP (e.g. 'B2B SaaS companies in California using Stripe')
@@ -408,36 +435,48 @@ async def discover_leads_for_icp(icp_prompt: str, max_companies: int = 10) -> Li
         ):
             seen_domains.add(d)
             candidate_sites.append(r)
-        if len(candidate_sites) >= max_companies:
-            break
 
     # 4. Deep Crawl Each Site & Extract Decision-Makers
     discovered_leads = []
     for site in candidate_sites:
+        if len(discovered_leads) >= max_companies:
+            break
         intel = await scrape_company_website(site["url"])
         domain = intel["domain"]
+        # A site that does not load is an invented or dead domain. Nothing to write to, nothing to write about.
+        if intel.get("error") or not intel.get("content_summary"):
+            print(f"[Discovery] Skipped {domain}: website did not load")
+            continue
+        if not await _is_target_company(icp_prompt, site.get("title", ""), domain, intel["content_summary"]):
+            continue
         # Sites carry placeholder and third-party addresses (you@yourcompany.com). Keep the company's own.
         intel["found_emails"] = [e for e in intel.get("found_emails", []) if e.endswith("@" + domain) or e.endswith("." + domain)]
         company_name = site.get("title", "").split("-")[0].split("|")[0].strip() or domain
 
         people = await _extract_people_with_llm(domain, intel.get("content_summary", ""))
-        if people:
-            p = people[0]
-            contact_name = f"{p['first_name']} {p['last_name']}"
-            job_title = p.get("job_title", "Decision Maker")
-            enriched = await enrich_person_email(p["first_name"], p["last_name"], domain)
-            email_candidate = enriched.get("email") or (intel["found_emails"][0] if intel.get("found_emails") else f"hello@{domain}")
+        p = people[0] if people else None
+        contact_name = f"{p['first_name']} {p['last_name']}" if p else "Founder / Hiring Lead"
+        job_title = p.get("job_title", "Decision Maker") if p else "Decision Maker"
+        enriched = await enrich_person_email(p["first_name"], p["last_name"], domain) if p else {}
+        verification = {}
+        if enriched.get("status") in ("verified", "catch_all"):
+            email_candidate = enriched["email"]
+            verification = {"verification_status": enriched["status"], "verification_details": enriched.get("details", "")}
         elif intel.get("found_emails"):
-            contact_name = "Founder / Growth Lead"
-            job_title = "Decision Maker"
+            # Published on the company's own site. The campaign step checks the mail server.
             email_candidate = intel["found_emails"][0]
+            contact_name = contact_name if p else "Founder / Growth Lead"
         else:
-            # Fall back to role-based address at the verified domain
-            contact_name = f"Founder / Hiring Lead"
-            job_title = "Decision Maker"
-            email_candidate = f"contact@{domain}"
+            # ponytail: no confirmed address, so the lead is saved but never sent to. A guess bounces.
+            # Upgrade: a contact data source that returns verified work addresses.
+            email_candidate = enriched.get("email") or f"contact@{domain}"
+            verification = {
+                "verification_status": "invalid",
+                "verification_details": "Guessed address. No mail server confirmed the mailbox.",
+            }
 
         discovered_leads.append({
+            **verification,
             "company_name": company_name,
             "company_domain": domain,
             "website_url": intel["url"],

@@ -281,6 +281,11 @@ async def trigger_campaign_discovery(campaign_id: int, background_tasks: Backgro
     finally:
         await conn.close()
 
+    # ponytail: a hand-researched campaign says so in its description, and discovery would add
+    # unresearched companies to it. Upgrade: a campaigns.discovery_locked column.
+    if "do not run discovery" in (camp_dict["icp_prompt"] or "").lower():
+        raise HTTPException(status_code=409, detail="This campaign is hand-researched. Its description says: do not run discovery.")
+
     background_tasks.add_task(
         run_discovery_task,
         campaign_id,
