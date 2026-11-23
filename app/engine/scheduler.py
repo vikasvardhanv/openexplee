@@ -28,7 +28,11 @@ async def process_due_followups(limit: int = 10) -> int:
         cur = await conn.execute("""
             SELECT l.*, c.booking_url FROM leads l
             LEFT JOIN campaigns c ON c.id = l.campaign_id
+            LEFT JOIN inboxes i ON i.id = c.inbox_id
             WHERE l.status = 'sent'
+              -- A campaign pinned to an inbox that is full today waits. Without this, its leads
+              -- fill the batch on every tick and no other campaign sends.
+              AND (c.inbox_id IS NULL OR (i.status = 'active' AND i.sent_today < i.daily_quota))
               AND l.is_hot_lead = 0
               AND l.followup_step IN (1, 2)
               AND l.next_followup_at IS NOT NULL
@@ -45,7 +49,7 @@ async def process_due_followups(limit: int = 10) -> int:
     for lead in leads:
         inbox = await get_next_available_inbox(lead.get("campaign_id"))
         if not inbox:
-            break
+            continue  # this lead's inbox filled up during the batch; the next lead can use another
 
         orig_subj = lead.get("personalized_subject") or f"quick question for {lead.get('company_name', 'you')}"
         subj = orig_subj if orig_subj.lower().startswith("re:") else f"Re: {orig_subj}"
