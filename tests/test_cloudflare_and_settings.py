@@ -124,6 +124,36 @@ async def run_checks():
     with patch.object(replies, "call_llm_json", new=AsyncMock(return_value={"intent": "not_now"})):
         assert (await replies._draft_reply(lead, "later"))["reply"] == ""
 
+    # 10. A campaign whose inbox is full today does not block another campaign's follow-ups.
+    conn = await get_db_connection()
+    ids = {}
+    for key, used in (("full", 5), ("free", 0)):
+        cur = await conn.execute(
+            "INSERT INTO inboxes (email, provider, smtp_host, smtp_user, smtp_password, daily_quota, sent_today) "
+            "VALUES (?, 'smtp', 'localhost', 'u', 'x', 5, ?)", (f"{key}@stall-check.test", used))
+        inbox_id = cur.lastrowid
+        cur = await conn.execute("INSERT INTO campaigns (name, icp_prompt, inbox_id) VALUES (?, 'x', ?)", (key, inbox_id))
+        ids[key] = (inbox_id, cur.lastrowid)
+    for n, key in enumerate(["full"] * 5 + ["free"]):
+        await conn.execute(
+            "INSERT INTO leads (campaign_id, email, status, verification_status, followup_step, next_followup_at) "
+            "VALUES (?, ?, 'sent', 'deliverable', 1, '2000-01-01 00:00:00')", (ids[key][1], f"lead{n}@{key}.test"))
+    await conn.commit()
+    await conn.close()
+    try:
+        with patch("app.engine.scheduler.send_single_email", new=AsyncMock(return_value={"success": True})) as send:
+            await process_due_followups(limit=5)
+        recipients = [call.args[1] for call in send.await_args_list]
+        assert "lead5@free.test" in recipients and not any(r.endswith("@full.test") for r in recipients)
+    finally:
+        conn = await get_db_connection()
+        for inbox_id, campaign_id in ids.values():
+            await conn.execute("DELETE FROM leads WHERE campaign_id = ?", (campaign_id,))
+            await conn.execute("DELETE FROM campaigns WHERE id = ?", (campaign_id,))
+            await conn.execute("DELETE FROM inboxes WHERE id = ?", (inbox_id,))
+        await conn.commit()
+        await conn.close()
+
     print("ALL CHECKS PASSED!")
 
 
