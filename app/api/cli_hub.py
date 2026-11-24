@@ -87,3 +87,18 @@ async def cli_poll_replies_endpoint():
 async def cli_scrape_endpoint(url: str, max_depth: int = 1):
     """Scrapes any URL using Crawl4AI."""
     return await ScraperCLIConnector.scrape(url=url, max_depth=max_depth)
+
+
+class ObscuraFetchRequest(BaseModel):
+    url: str
+    stealth: bool = True
+    timeout: Optional[float] = 25.0
+
+
+@router.post("/obscura/fetch")
+async def cli_obscura_fetch_endpoint(req: ObscuraFetchRequest):
+    """Scrapes any URL using Obscura's Rust anti-fingerprint stealth engine."""
+    from app.engine.obscura import fetch_with_obscura
+    return await fetch_with_obscura(req.url, stealth=req.stealth, timeout=req.timeout or 25.0)
+
+

@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     thor_ollama_model: str = "llama3.2:3b"
     thor_cdp_url: str = "http://100.114.48.60:9222"
 
+    # Obscura Rust Headless Browser Settings (Anti-bot stealth & lightweight CDP)
+    obscura_bin_path: str = "bin/obscura"
+    obscura_enabled: bool = True
+    obscura_stealth: bool = True
+    obscura_cdp_url: str = "http://127.0.0.1:9222"
+
     # Booking Link (Self-Hosted Cal.com on VPS)
     booking_url: str = "https://cal.viktron.ai/vikash/15min"
 

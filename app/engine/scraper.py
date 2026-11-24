@@ -209,20 +209,25 @@ async def scrape_company_website(url: str, max_depth: int = 1) -> Dict[str, Any]
     try:
         return await _scrape_crawl4ai(url, max_depth=max_depth)
     except Exception as exc:
-        print(f"[Scraper] Crawl4AI attempt on {url} encountered: {exc}. Falling back to HTTP.")
+        print(f"[Scraper] Crawl4AI attempt on {url} encountered: {exc}. Trying Obscura stealth browser.")
         try:
-            return await _scrape_httpx_fallback(url, max_depth=max_depth)
-        except Exception as e:
-            return {
-                "domain": urlparse(url).netloc.replace("www.", ""),
-                "url": url,
-                "title": "",
-                "description": "",
-                "headlines": [],
-                "content_summary": "",
-                "found_emails": [],
-                "team_leads": [],
-                "subpages": [],
-                "error": str(e),
-                "crawler": "failed",
-            }
+            from app.engine.obscura import fetch_with_obscura
+            return await fetch_with_obscura(url, stealth=True)
+        except Exception as obs_exc:
+            print(f"[Scraper] Obscura attempt on {url} encountered: {obs_exc}. Falling back to HTTP.")
+            try:
+                return await _scrape_httpx_fallback(url, max_depth=max_depth)
+            except Exception as e:
+                return {
+                    "domain": urlparse(url).netloc.replace("www.", ""),
+                    "url": url,
+                    "title": "",
+                    "description": "",
+                    "headlines": [],
+                    "content_summary": "",
+                    "found_emails": [],
+                    "team_leads": [],
+                    "subpages": [],
+                    "error": str(e),
+                    "crawler": "failed",
+                }

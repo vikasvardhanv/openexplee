@@ -252,6 +252,48 @@ def clihub_launch(tool_name: str, args):
     output_result(res, True)
 
 
+# ----------------- OBSCURA (STEALTH HEADLESS BROWSER) -----------------
+@cli.group()
+def obscura():
+    """Lightweight Rust headless browser for anti-bot stealth scraping & CDP."""
+    pass
+
+
+@obscura.command("fetch")
+@click.argument("url")
+@click.option("--stealth/--no-stealth", default=True, help="Enable anti-detection stealth mode")
+@click.option("--json", "json_mode", is_flag=True, help="Output JSON")
+def obscura_fetch_cmd(url: str, stealth: bool, json_mode: bool):
+    """Fetch and scrape a website using Obscura's stealth engine."""
+    async def _run():
+        from app.engine.obscura import fetch_with_obscura
+        return await fetch_with_obscura(url, stealth=stealth)
+
+    res = asyncio.run(_run())
+    output_result(res, json_mode)
+
+
+@obscura.command("serve")
+@click.option("--port", default=9222, help="CDP listening port (default: 9222)")
+@click.option("--stealth/--no-stealth", default=True, help="Enable anti-detection stealth mode")
+def obscura_serve_cmd(port: int, stealth: bool):
+    """Start Obscura CDP server for Playwright/Crawl4AI automation."""
+    from app.engine.obscura import get_obscura_bin, get_obscura_env
+    import subprocess
+
+    bin_path = get_obscura_bin()
+    if not bin_path:
+        click.echo("Obscura binary not found. Run ./scripts/install_obscura.sh")
+        return
+
+    cmd = [bin_path, "serve", "--port", str(port)]
+    if stealth:
+        cmd.append("--stealth")
+
+    click.echo(f"Starting Obscura CDP server on port {port} (stealth={stealth})...")
+    subprocess.run(cmd, env=get_obscura_env())
+
+
 # ----------------- REPL -----------------
 @cli.command("repl")
 def repl_mode():
@@ -273,3 +315,4 @@ def repl_mode():
 
 if __name__ == "__main__":
     cli()
+
