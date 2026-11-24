@@ -20,8 +20,156 @@ class UpdateThreadTagRequest(BaseModel):
     tag: str  # 'hot', 'needs_reply', 'not_interested', 'meeting_booked', 'cleared'
 
 
+class DecisionActionRequest(BaseModel):
+    lead_id: int
+    action: str  # 'send_now', 'monday', 'not_needed'
+    custom_reply: Optional[str] = None
+    cc_email: Optional[str] = "vikash@viktron.ai"
+
+
+@router.get("/decisions")
+async def get_pending_decisions():
+    """
+    Returns high-priority decision cards for today (Explee '1 decision for today' flow).
+    Surfaces hot replies and leads that have gone quiet and need a 1-click nudge.
+    """
+    conn = await get_db_connection()
+    try:
+        # Find leads that replied OR went quiet for >= 3 days after an outreach send
+        query = """
+            SELECT l.*, c.name as campaign_name, c.value_proposition,
+                   CAST(ROUND(julianday('now') - julianday(COALESCE(l.sent_at, l.created_at))) AS INTEGER) as days_quiet
+            FROM leads l
+            JOIN campaigns c ON l.campaign_id = c.id
+            WHERE (l.status = 'replied' OR l.is_hot_lead = 1 OR (l.status = 'sent' AND (julianday('now') - julianday(COALESCE(l.sent_at, l.created_at))) >= 3))
+              AND l.status NOT IN ('opted_out', 'bounced')
+            ORDER BY l.is_hot_lead DESC, days_quiet DESC
+            LIMIT 10
+        """
+        cur = await conn.execute(query)
+        rows = await cur.fetchall()
+        decisions = []
+        booking_url = settings.booking_url or "https://cal.viktron.ai/vikash/15min"
+
+        for r in rows:
+            d = dict(r)
+            first_name = d.get("first_name") or (d.get("contact_name", "").split()[0] if d.get("contact_name") else "there")
+            days_quiet = max(1, d.get("days_quiet") or 1)
+
+            # Get latest prospect reply if available
+            cur_msg = await conn.execute(
+                "SELECT body, created_at FROM messages WHERE lead_id = ? AND direction = 'inbound' ORDER BY created_at DESC LIMIT 1",
+                (d["id"],)
+            )
+            inbound_msg = await cur_msg.fetchone()
+            prospect_quote = dict(inbound_msg)["body"] if inbound_msg else (d.get("reply_intent") or "How about a quick chat?")
+
+            if d.get("is_hot_lead") or d.get("status") == "replied":
+                suggested_reply = (
+                    f"Hi {first_name},\n\n"
+                    f"Sounds good. Easiest is to grab a quick 15-minute slot that suits you here:\n"
+                    f"{booking_url}\n\n"
+                    "Best,\n"
+                    "Vikash"
+                )
+            else:
+                suggested_reply = (
+                    f"Hi {first_name},\n\n"
+                    f"One quick thought before our call: we can show you a live sandbox test for {d.get('company_name') or 'your team'} in 10 minutes.\n\n"
+                    f"Feel free to grab a slot here: {booking_url}\n\n"
+                    "Best,\n"
+                    "Vikash"
+                )
+
+            decisions.append({
+                "lead_id": d["id"],
+                "contact_name": d.get("contact_name") or "Decision Maker",
+                "email": d.get("email"),
+                "company_name": d.get("company_name") or d.get("company_domain"),
+                "job_title": d.get("job_title") or "Executive",
+                "campaign_name": d.get("campaign_name"),
+                "days_quiet": days_quiet,
+                "is_reply": bool(inbound_msg or d.get("is_hot_lead")),
+                "prospect_quote": prospect_quote,
+                "suggested_reply": suggested_reply,
+            })
+
+        return {"total_decisions": len(decisions), "decisions": decisions}
+    finally:
+        await conn.close()
+
+
+@router.post("/decisions/act")
+async def act_on_decision(req: DecisionActionRequest):
+    """
+    Executes a 1-click decision (Send now, Monday morning, Not needed) matching Explee.
+    """
+    conn = await get_db_connection()
+    try:
+        cur = await conn.execute("SELECT * FROM leads WHERE id = ?", (req.lead_id,))
+        row = await cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Lead not found")
+        lead = dict(row)
+
+        if req.action == "send_now":
+            cur_inbox = await conn.execute("SELECT * FROM inboxes WHERE status = 'active' ORDER BY id ASC LIMIT 1")
+            inbox_row = await cur_inbox.fetchone()
+            if not inbox_row:
+                raise HTTPException(status_code=400, detail="No active sending inbox configured.")
+            inbox = dict(inbox_row)
+            if req.cc_email:
+                inbox["cc_email"] = req.cc_email
+
+            body = req.custom_reply or (
+                f"Hi {lead.get('first_name') or 'there'},\n\n"
+                f"Following up on my previous note. Easiest is to grab 15 minutes here:\n"
+                f"{settings.booking_url or 'https://cal.viktron.ai/vikash/15min'}\n\n"
+                "Best,\nVikash"
+            )
+            subject = f"Re: {lead.get('personalized_subject') or 'quick question'}"
+
+            res = await send_single_email(
+                inbox=inbox,
+                to_email=lead["email"],
+                subject=subject,
+                body=body,
+                lead_id=lead["id"],
+                is_reply=True,
+            )
+            if not res.get("success"):
+                raise HTTPException(status_code=500, detail=f"Send failed: {res.get('error')}")
+
+            await conn.execute(
+                "UPDATE leads SET status = 'sent', followup_step = COALESCE(followup_step, 0) + 1, sent_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (lead["id"],)
+            )
+            await conn.commit()
+            return {"status": "dispatched", "lead_id": lead["id"], "action": "send_now"}
+
+        elif req.action == "monday":
+            await conn.execute(
+                "UPDATE leads SET next_followup_at = datetime('now', '+3 days') WHERE id = ?",
+                (lead["id"],)
+            )
+            await conn.commit()
+            return {"status": "snoozed", "lead_id": lead["id"], "action": "monday"}
+
+        elif req.action == "not_needed":
+            await conn.execute(
+                "UPDATE leads SET is_hot_lead = 0, followup_step = COALESCE(followup_step, 0) + 1 WHERE id = ?",
+                (lead["id"],)
+            )
+            await conn.commit()
+            return {"status": "dismissed", "lead_id": lead["id"], "action": "not_needed"}
+
+        raise HTTPException(status_code=400, detail=f"Invalid action: {req.action}")
+    finally:
+        await conn.close()
+
+
 @router.get("/threads")
-async def list_mailbox_threads(folder: str = "all", search: Optional[str] = None):
+async def list_mailbox_threads(folder: str = "all", search: Optional[str] = None, workspace: Optional[str] = None):
     """
     Returns outbound and inbound email conversation threads.
     Matches the Explee / Smartlead unified mailbox architecture.
@@ -29,7 +177,7 @@ async def list_mailbox_threads(folder: str = "all", search: Optional[str] = None
     conn = await get_db_connection()
     try:
         query = """
-            SELECT l.*, c.name as campaign_name, c.value_proposition
+            SELECT l.*, c.name as campaign_name, c.value_proposition, COALESCE(c.workspace, 'Viktron.ai') as workspace
             FROM leads l
             JOIN campaigns c ON l.campaign_id = c.id
             WHERE l.status IN ('sent', 'replied', 'auto_replied', 'opted_out')
@@ -39,6 +187,13 @@ async def list_mailbox_threads(folder: str = "all", search: Optional[str] = None
             query += " AND (l.is_hot_lead = 1 OR l.status = 'replied')"
         elif folder == "needs_reply":
             query += " AND l.status = 'replied'"
+
+        if workspace and workspace != "all":
+            if workspace.lower() == "findmyfuture":
+                query += " AND (LOWER(c.workspace) = 'findmyfuture' OR c.name LIKE '%FindMyFuture%')"
+            else:
+                query += " AND (LOWER(c.workspace) = LOWER(?) AND c.name NOT LIKE '%FindMyFuture%')"
+                params.append(workspace)
 
         if search:
             query += " AND (l.contact_name LIKE ? OR l.company_name LIKE ? OR l.email LIKE ?)"
@@ -62,6 +217,7 @@ async def list_mailbox_threads(folder: str = "all", search: Optional[str] = None
                 "status": d.get("status"),
                 "is_hot_lead": bool(d.get("is_hot_lead")),
                 "campaign_name": d.get("campaign_name"),
+                "workspace": d.get("workspace") or ("FindMyFuture" if "findmyfuture" in (d.get("campaign_name") or "").lower() else "Viktron.ai"),
                 "sent_from_inbox": d.get("sent_from_inbox") or "outreach@getagentirl.online",
                 "sent_at": d.get("sent_at") or d.get("created_at"),
                 "subject": d.get("personalized_subject") or "Outreach Inquiry",

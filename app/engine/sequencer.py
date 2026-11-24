@@ -252,6 +252,11 @@ async def send_single_email(
     if await _is_suppressed(to_email):
         return {"success": False, "inbox_email": inbox["email"], "error": f"Suppressed recipient/domain: {to_email}"}
 
+    local_part = to_email.strip().lower().split("@")[0]
+    if any(bad in local_part for bad in ("notpresent", "unknown.", "john.doe", "jane.doe", "noreply", "no-reply")):
+        await _auto_suppress_bounce(to_email, lead_id, "blocked_placeholder_email")
+        return {"success": False, "inbox_email": inbox["email"], "error": f"Blocked placeholder address: {to_email}"}
+
     clean_subject = resolve_spintax(subject)
     clean_body = resolve_spintax(body)
     footer = "" if is_reply else compliance_footer()
@@ -296,7 +301,7 @@ async def dispatch_campaign_batch(campaign_id: int, limit: int = 10) -> Dict[str
             SELECT * FROM leads 
             WHERE campaign_id = ?
               AND status IN ('enriched', 'queued', 'discovered')
-              AND verification_status != 'invalid'
+              AND verification_status IN ('verified', 'deliverable', 'catch_all')
               AND email IS NOT NULL AND email != ''
             LIMIT ?
         """, (campaign_id, limit))

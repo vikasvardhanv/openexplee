@@ -10,6 +10,25 @@ DISPOSABLE_DOMAINS = {
     "sharklasers.com", "getairmail.com", "dispostable.com", "yopmail.com"
 }
 
+INVALID_NAME_TOKENS = {
+    "unknown", "notpresent", "not_present", "none", "na", "n/a", "null",
+    "placeholder", "test", "admin", "founder", "hiring", "team", "user",
+    "sample", "example", "noreply", "contact", "info", "hello", "support",
+}
+
+
+def is_valid_person_name(first_name: str, last_name: str) -> bool:
+    """Rejects LLM placeholder names like 'NotPresent NotPresent', 'Unknown Unknown', or 'John Doe'."""
+    f = re.sub(r"[^a-z]", "", (first_name or "").lower())
+    l = re.sub(r"[^a-z]", "", (last_name or "").lower())
+    if len(f) < 2 or len(l) < 2:
+        return False
+    if f in INVALID_NAME_TOKENS or l in INVALID_NAME_TOKENS:
+        return False
+    if f"{f} {l}" in ("john doe", "jane doe", "first last"):
+        return False
+    return True
+
 
 def generate_email_permutations(first_name: str, last_name: str, domain: str) -> List[str]:
     """Generates standard B2B email permutations from name and domain."""
@@ -155,6 +174,17 @@ async def enrich_person_email(first_name: str, last_name: str, domain: str) -> D
     Replicates Explee's enrich_email tool for $0: generates corporate email
     permutations and checks DNS MX + live SMTP handshake to find the best address.
     """
+    if not is_valid_person_name(first_name, last_name):
+        return {
+            "email": None,
+            "status": "invalid",
+            "score": 0,
+            "mx_host": None,
+            "is_disposable": False,
+            "details": f"Rejected placeholder or invalid name: {first_name} {last_name}",
+            "candidates_tested": [],
+        }
+
     candidates = generate_email_permutations(first_name, last_name, domain)
 
     for candidate in candidates:

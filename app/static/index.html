@@ -64,6 +64,16 @@
           <span
             class="ml-2 text-xs uppercase px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 font-semibold border border-indigo-500/20">Self-Hosted</span>
         </div>
+
+        <!-- Company / Workspace Selector (Matching Explee viktron.ai workspace selector) -->
+        <div class="hidden sm:flex items-center ml-2 pl-3 border-l border-slate-800">
+          <select id="global-workspace-select" onchange="switchWorkspace(this.value)"
+            class="bg-slate-900 border border-slate-700 hover:border-indigo-500 rounded-xl px-2.5 py-1 text-xs font-semibold text-slate-200 focus:outline-none transition cursor-pointer">
+            <option value="all">🏢 All Workspaces</option>
+            <option value="Viktron.ai" selected>⚡ Viktron.ai</option>
+            <option value="FindMyFuture">🎓 FindMyFuture</option>
+          </select>
+        </div>
       </div>
 
       <!-- Navigation Tabs -->
@@ -127,6 +137,25 @@
             <span>New ICP Discovery</span>
           </button>
         </div>
+      </div>
+
+      <!-- Explee-Style "Decisions for Today" Banner (Matching Screenshot 1) -->
+      <div id="decisions-banner" class="hidden p-4 rounded-2xl bg-gradient-to-r from-emerald-950/50 via-teal-950/30 to-slate-900 border border-emerald-500/40 flex items-center justify-between">
+        <div class="flex items-center gap-3.5">
+          <div class="relative flex items-center justify-center">
+            <span class="w-3 h-3 rounded-full bg-emerald-400 animate-ping absolute"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+          </div>
+          <div>
+            <h3 id="decisions-count-text" class="text-sm font-bold text-white flex items-center gap-2">
+              • 1 decision for today
+            </h3>
+            <p id="decisions-subtext" class="text-xs text-slate-400 mt-0.5">High-priority prospect responses and 1-click follow-up nudges.</p>
+          </div>
+        </div>
+        <button onclick="openDecisionsModal()" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-950 transition flex items-center gap-1.5 cursor-pointer">
+          <span>Start</span> <i data-lucide="chevron-right" class="w-4 h-4"></i>
+        </button>
       </div>
 
       <!-- KPI Metrics Cards (Replicating Explee's Core Live Tracking) -->
@@ -766,6 +795,75 @@
       </div>
     </section>
 
+    <!-- EXPLEE DECISION MODAL ("Nudge Tyler?" - Matching Screenshot 1) -->
+    <div id="decision-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl space-y-5 relative">
+        <!-- Top Green Progress Line -->
+        <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+          <div id="decision-modal-progress" class="bg-emerald-400 h-1.5 rounded-full transition-all duration-300" style="width: 100%;"></div>
+        </div>
+
+        <!-- Header & Close -->
+        <div class="flex items-center justify-between">
+          <h3 id="decision-modal-title" class="text-lg font-bold text-white flex items-center gap-2">
+            <span>Nudge Tyler?</span>
+          </h3>
+          <button onclick="closeDecisionsModal()" class="text-slate-400 hover:text-white p-1 rounded-lg transition cursor-pointer">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- Prospect Identity Card -->
+        <div class="flex items-center gap-3 p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800/80">
+          <div id="decision-modal-avatar" class="w-10 h-10 rounded-xl bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 flex items-center justify-center font-bold text-sm shrink-0">
+            TG
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span id="decision-modal-name" class="font-bold text-sm text-white">Tyler Green</span>
+              <span id="decision-modal-quiet" class="text-[11px] text-amber-400 font-semibold flex items-center gap-1">
+                <i data-lucide="clock" class="w-3 h-3"></i> Quiet for 4 days
+              </span>
+            </div>
+            <div class="text-xs text-slate-400 truncate mt-0.5">
+              <span id="decision-modal-email">tyler@nexoflow.tech</span> &bull; <span id="decision-modal-company" class="text-slate-300">NexoFlow</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Prospect Quote / Context -->
+        <div id="decision-modal-quote-box" class="p-3.5 rounded-xl bg-slate-950 border border-slate-800/90 text-xs text-slate-300 leading-relaxed font-sans">
+          <span class="text-slate-500 font-bold block text-[10px] uppercase mb-1">Prospect Message</span>
+          <p id="decision-modal-quote">"How about a zoom meeting? Thanks"</p>
+        </div>
+
+        <!-- Suggested AI Reply Draft -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between text-xs text-slate-400">
+            <span class="font-medium text-slate-300">Suggested AI Reply</span>
+            <span class="text-[11px] text-indigo-400 flex items-center gap-1">
+              <i data-lucide="sparkles" class="w-3 h-3"></i> 1-click booking link included
+            </span>
+          </div>
+          <textarea id="decision-modal-reply-text" rows="4"
+            class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 leading-relaxed font-sans"></textarea>
+        </div>
+
+        <!-- Explee 3 Action Buttons (Matching Screenshot 1) -->
+        <div class="flex flex-col sm:flex-row items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
+          <button onclick="actOnCurrentDecision('not_needed')" class="w-full sm:w-auto px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white transition cursor-pointer">
+            Not needed
+          </button>
+          <button onclick="actOnCurrentDecision('monday')" class="w-full sm:w-auto px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition cursor-pointer">
+            Monday morning
+          </button>
+          <button onclick="actOnCurrentDecision('send_now')" id="btn-decision-send" class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-950 transition flex items-center justify-center gap-1.5 cursor-pointer">
+            <i data-lucide="send" class="w-3.5 h-3.5"></i> Send now
+          </button>
+        </div>
+      </div>
+    </div>
+
   </main>
 
   <footer class="border-t border-slate-900 py-6 text-center text-xs text-slate-500">
@@ -866,8 +964,123 @@
       </button>`;
     }
 
+    // Global Workspace & Decision State
+    let currentWorkspace = localStorage.getItem('openexplee_workspace') || 'Viktron.ai';
+    let pendingDecisions = [];
+    let currentDecisionIndex = 0;
+
+    function switchWorkspace(ws) {
+      currentWorkspace = ws;
+      localStorage.setItem('openexplee_workspace', ws);
+      const sel = document.getElementById('global-workspace-select');
+      if (sel) sel.value = ws;
+      loadDashboard();
+      if (typeof loadMailbox === 'function') loadMailbox();
+      showToast(`Switched workspace to ${ws === 'all' ? 'All Workspaces' : ws}`);
+    }
+
+    async function loadDecisions() {
+      try {
+        const res = await fetch('/api/mailbox/decisions');
+        if (!res.ok) return;
+        const data = await res.json();
+        pendingDecisions = data.decisions || [];
+        currentDecisionIndex = 0;
+        const banner = document.getElementById('decisions-banner');
+        const countText = document.getElementById('decisions-count-text');
+        if (pendingDecisions.length > 0) {
+          if (banner) banner.classList.remove('hidden');
+          if (countText) countText.innerText = `• ${pendingDecisions.length} decision${pendingDecisions.length > 1 ? 's' : ''} for today`;
+        } else {
+          if (banner) banner.classList.add('hidden');
+        }
+      } catch (e) {
+        console.warn('Failed to load decisions:', e);
+      }
+    }
+
+    function openDecisionsModal() {
+      if (!pendingDecisions.length) {
+        showToast('No pending decisions for today! All caught up.');
+        return;
+      }
+      renderCurrentDecision();
+      const modal = document.getElementById('decision-modal');
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeDecisionsModal() {
+      const modal = document.getElementById('decision-modal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function renderCurrentDecision() {
+      if (currentDecisionIndex >= pendingDecisions.length) {
+        closeDecisionsModal();
+        loadDecisions();
+        loadDashboard();
+        showToast('🎉 All decisions for today completed!');
+        return;
+      }
+      const d = pendingDecisions[currentDecisionIndex];
+      const initials = (d.contact_name || 'U').split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase();
+      
+      document.getElementById('decision-modal-title').innerText = `Nudge ${d.contact_name.split(' ')[0]}?`;
+      document.getElementById('decision-modal-avatar').innerText = initials;
+      document.getElementById('decision-modal-name').innerText = d.contact_name;
+      document.getElementById('decision-modal-email').innerText = d.email;
+      document.getElementById('decision-modal-company').innerText = d.company_name;
+      document.getElementById('decision-modal-quiet').innerHTML = `<i data-lucide="clock" class="w-3 h-3"></i> ${d.is_reply ? 'Replied' : 'Quiet for ' + d.days_quiet + ' days'}`;
+      document.getElementById('decision-modal-quote').innerText = `"${d.prospect_quote}"`;
+      document.getElementById('decision-modal-reply-text').value = d.suggested_reply;
+
+      const pct = Math.round(((currentDecisionIndex + 1) / pendingDecisions.length) * 100);
+      document.getElementById('decision-modal-progress').style.width = `${pct}%`;
+      lucide.createIcons();
+    }
+
+    async function actOnCurrentDecision(action) {
+      if (currentDecisionIndex >= pendingDecisions.length) return;
+      const d = pendingDecisions[currentDecisionIndex];
+      const replyText = document.getElementById('decision-modal-reply-text').value;
+
+      const btn = document.getElementById('btn-decision-send');
+      if (action === 'send_now' && btn) {
+        btn.innerHTML = `<span class="animate-spin mr-1">&orarr;</span> Sending...`;
+        btn.disabled = true;
+      }
+
+      try {
+        const res = await fetch('/api/mailbox/decisions/act', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lead_id: d.lead_id,
+            action: action,
+            custom_reply: replyText,
+            cc_email: 'vikash@viktron.ai'
+          })
+        });
+        if (!res.ok) throw new Error('Failed to execute decision');
+        showToast(action === 'send_now' ? 'Nudge sent directly via VPS relay!' : action === 'monday' ? 'Snoozed to Monday' : 'Skipped decision');
+        currentDecisionIndex++;
+        renderCurrentDecision();
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        if (btn) {
+          btn.innerHTML = `<i data-lucide="send" class="w-3.5 h-3.5"></i> Send now`;
+          btn.disabled = false;
+        }
+      }
+    }
+
     async function loadDashboard() {
       try {
+        // Sync workspace select
+        const sel = document.getElementById('global-workspace-select');
+        if (sel) sel.value = currentWorkspace;
+
         const res = await fetch('/api/stats');
         const data = await res.json();
         document.getElementById('metric-leads').innerText = data.total_leads || 0;
@@ -877,11 +1090,22 @@
         if (document.getElementById('metric-saved')) document.getElementById('metric-saved').innerText = `$${(data.money_saved || 0).toFixed(2)}`;
         document.getElementById('metric-health').innerText = `${data.avg_health_score || 100}%`;
 
+        await loadDecisions();
+
         const campRes = await fetch('/api/campaigns');
-        const camps = await campRes.json();
+        let camps = await campRes.json();
         const tbody = document.getElementById('dashboard-campaigns-body');
+        
+        if (currentWorkspace !== 'all') {
+          if (currentWorkspace.toLowerCase() === 'findmyfuture') {
+            camps = camps.filter(c => (c.name || '').toLowerCase().includes('findmyfuture') || (c.workspace || '').toLowerCase() === 'findmyfuture');
+          } else {
+            camps = camps.filter(c => !(c.name || '').toLowerCase().includes('findmyfuture'));
+          }
+        }
+
         if (!camps.length) {
-          tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-500">No campaigns yet. Click 'New ICP Discovery' to start.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-500">No campaigns found for workspace '${currentWorkspace}'. Click 'New ICP Discovery' to start.</td></tr>`;
           return;
         }
 
@@ -900,6 +1124,11 @@
             <td class="py-3 px-4 text-right">${renderActionButton(c, true)}</td>
           </tr>
         `).join('');
+        lucide.createIcons();
+      } catch (err) {
+        console.error(err);
+      }
+    }
         lucide.createIcons();
       } catch (err) {
         console.error(err);
@@ -1487,7 +1716,8 @@
       if (folder) currentMailboxFolder = folder;
       const search = document.getElementById('mailbox-search')?.value.trim() || '';
       try {
-        const url = `/api/mailbox/threads?folder=${currentMailboxFolder}${search ? '&search=' + encodeURIComponent(search) : ''}`;
+        const wsParam = currentWorkspace !== 'all' ? `&workspace=${encodeURIComponent(currentWorkspace)}` : '';
+        const url = `/api/mailbox/threads?folder=${currentMailboxFolder}${search ? '&search=' + encodeURIComponent(search) : ''}${wsParam}`;
         const res = await fetch(url);
         allMailboxThreads = await res.json();
 
@@ -1504,10 +1734,15 @@
         }
 
         renderMailboxThreads(allMailboxThreads);
-        if (selectedLeadId) {
+        if (selectedLeadId && allMailboxThreads.some(t => t.id === selectedLeadId)) {
           selectThread(selectedLeadId);
         } else if (allMailboxThreads.length > 0) {
           selectThread(allMailboxThreads[0].id);
+        } else {
+          const emptyPanel = document.getElementById('mailbox-detail-empty');
+          const contentPanel = document.getElementById('mailbox-detail-content');
+          if (emptyPanel) emptyPanel.classList.remove('hidden');
+          if (contentPanel) contentPanel.classList.add('hidden');
         }
       } catch (e) {
         console.error('Mailbox error:', e);
@@ -1554,15 +1789,20 @@
       if (!threads.length) {
         if (searchVal) {
           c.innerHTML = `
-            <div class="py-12 text-center text-slate-400 text-xs space-y-2">
+            <div class="py-12 text-center text-slate-400 text-xs space-y-3 p-4">
               <p>No conversation threads matching "<strong class="text-white">${searchVal}</strong>".</p>
-              <button onclick="clearMailboxSearch()" class="px-3 py-1 rounded-lg bg-indigo-600/30 text-indigo-300 hover:bg-indigo-600/50 border border-indigo-500/30 text-xs font-semibold transition">
+              <button onclick="clearMailboxSearch()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition shadow-md cursor-pointer">
                 Clear Search Filter
               </button>
             </div>
           `;
         } else {
-          c.innerHTML = `<div class="py-12 text-center text-slate-500 text-xs">No conversation threads found. Dispatch an outreach batch to start conversations!</div>`;
+          c.innerHTML = `
+            <div class="py-12 text-center text-slate-500 text-xs space-y-2 p-4">
+              <p>No conversation threads found in workspace <b>'${currentWorkspace === 'all' ? 'All' : currentWorkspace}'</b>.</p>
+              <p class="text-[11px] text-slate-600">Dispatch an outreach batch to start conversations!</p>
+            </div>
+          `;
         }
         return;
       }
@@ -1631,40 +1871,80 @@
         // Setup Nudge snippet
         document.getElementById('thread-nudge-snippet').innerText = activeThreadDetail.suggested_nudge;
 
-        // Render Conversation Messages
+        // Render Conversation Messages Dynamically (Matching Explee Screenshot 2)
         const msgList = document.getElementById('thread-messages-list');
-        msgList.innerHTML = `
-          <!-- Outbound Cold Pitch -->
-          <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
-            <div class="flex items-center justify-between text-xs pb-2 border-b border-slate-800/80">
-              <div class="flex items-center gap-2">
-                <div class="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-[10px]">
-                  AI
-                </div>
-                <div>
-                  <span class="font-bold text-white">Alex Morgan</span>
-                  <span class="text-slate-500 text-[11px]">&lt;${lead.sent_from_inbox || 'outreach@getagentirl.online'}&gt;</span>
-                </div>
-              </div>
-              <div class="text-[11px] text-slate-500 flex items-center gap-1">
-                <span>${lead.sent_at ? new Date(lead.sent_at).toLocaleString() : 'Just now'}</span>
-                <span class="text-emerald-400 font-bold ml-1">✓ Delivered</span>
-              </div>
-            </div>
-            <div class="text-xs font-semibold text-slate-200">
-              Subject: ${lead.personalized_subject || 'Outreach Pitch'}
-            </div>
-            <div class="text-xs text-slate-300 font-sans whitespace-pre-wrap leading-relaxed">
-${lead.personalized_body || 'No message body available.'}
-            </div>
-          </div>
+        const msgs = (activeThreadDetail.messages && activeThreadDetail.messages.length > 0) ? activeThreadDetail.messages : [{
+          direction: 'outbound',
+          sender: lead.sent_from_inbox || 'outreach@getagentirl.online',
+          subject: lead.personalized_subject || 'Outreach Pitch',
+          body: lead.personalized_body || 'No message body available.',
+          timestamp: lead.sent_at || lead.created_at
+        }];
 
-          <!-- System routing note -->
+        let html = '';
+        msgs.forEach(m => {
+          const isOutbound = m.direction === 'outbound';
+          const timeStr = m.timestamp ? new Date(m.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Recent';
+
+          if (isOutbound) {
+            html += `
+              <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+                <div class="flex items-center justify-between text-xs pb-2 border-b border-slate-800/80">
+                  <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-[10px]">
+                      AI
+                    </div>
+                    <div>
+                      <span class="font-bold text-white">Alex Morgan</span>
+                      <span class="text-slate-500 text-[11px]">&lt;${m.sender || 'outreach@getagentirl.online'}&gt;</span>
+                    </div>
+                  </div>
+                  <div class="text-[11px] text-slate-500 flex items-center gap-1">
+                    <span>${timeStr}</span>
+                    <span class="text-emerald-400 font-bold ml-1">✓ Delivered</span>
+                  </div>
+                </div>
+                ${m.subject ? `<div class="text-xs font-semibold text-slate-200">Subject: ${m.subject}</div>` : ''}
+                <div class="text-xs text-slate-300 font-sans whitespace-pre-wrap leading-relaxed">${m.body || ''}</div>
+              </div>
+            `;
+          } else {
+            html += `
+              <div class="p-4 rounded-xl bg-indigo-950/40 border border-indigo-500/40 space-y-2">
+                <div class="flex items-center justify-between text-xs pb-2 border-b border-indigo-500/20">
+                  <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center font-bold text-[10px]">
+                      RE
+                    </div>
+                    <div>
+                      <span class="font-bold text-white">${lead.contact_name || 'Prospect'}</span>
+                      <span class="text-slate-400 text-[11px]">&lt;${lead.email}&gt;</span>
+                    </div>
+                  </div>
+                  <span class="text-[11px] text-slate-400">${timeStr}</span>
+                </div>
+                <div class="text-xs text-white font-sans whitespace-pre-wrap leading-relaxed">${m.body || ''}</div>
+              </div>
+
+              <!-- Explee Hand-off Banner: Joined the conversation (Matching Screenshot 2) -->
+              <div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 font-semibold flex items-center justify-between">
+                <span class="flex items-center gap-2">
+                  <i data-lucide="user-plus" class="w-4 h-4 text-amber-400"></i>
+                  <span>Joined the conversation: <b>vikash@viktron.ai</b></span>
+                </span>
+                <span class="text-[10px] text-amber-400/80 bg-amber-500/20 px-2 py-0.5 rounded">Auto-CC Active</span>
+              </div>
+            `;
+          }
+        });
+
+        html += `
           <div class="flex items-center justify-center gap-2 text-[11px] text-slate-500 py-1">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>All replies automatically routed & CC'd to <b>vikash@viktron.ai</b></span>
+            <span>All prospect replies automatically routed & CC'd to <b>vikash@viktron.ai</b></span>
           </div>
         `;
+        msgList.innerHTML = html;
         lucide.createIcons();
       } catch (err) {
         console.error('Thread detail error:', err);
