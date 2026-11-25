@@ -208,7 +208,7 @@ async def list_campaigns():
         SELECT c.*, 
             (SELECT COUNT(*) FROM leads l WHERE l.campaign_id = c.id AND l.verification_status IN ('verified', 'deliverable')) as verified_count,
             (SELECT COUNT(*) FROM leads l WHERE l.campaign_id = c.id AND l.status = 'sent') as sent_leads_count,
-            (SELECT COUNT(*) FROM leads l WHERE l.campaign_id = c.id AND l.status IN ('enriched', 'queued', 'discovered') AND l.verification_status != 'invalid' AND l.email IS NOT NULL AND l.email != '') as ready_leads_count
+            (SELECT COUNT(*) FROM leads l WHERE l.campaign_id = c.id AND l.status IN ('enriched', 'queued', 'discovered') AND l.verification_status IN ('verified', 'deliverable', 'catch_all') AND l.email IS NOT NULL AND l.email != '') as ready_leads_count
         FROM campaigns c
         ORDER BY c.created_at DESC
     """)

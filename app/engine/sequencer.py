@@ -253,7 +253,7 @@ async def send_single_email(
         return {"success": False, "inbox_email": inbox["email"], "error": f"Suppressed recipient/domain: {to_email}"}
 
     local_part = to_email.strip().lower().split("@")[0]
-    if any(bad in local_part for bad in ("notpresent", "unknown.", "john.doe", "jane.doe", "noreply", "no-reply")):
+    if any(bad in local_part for bad in ("notpresent", "notfound", "unknown.", "john.doe", "jane.doe", "noreply", "no-reply")):
         await _auto_suppress_bounce(to_email, lead_id, "blocked_placeholder_email")
         return {"success": False, "inbox_email": inbox["email"], "error": f"Blocked placeholder address: {to_email}"}
 

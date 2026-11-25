@@ -11,7 +11,7 @@ DISPOSABLE_DOMAINS = {
 }
 
 INVALID_NAME_TOKENS = {
-    "unknown", "notpresent", "not_present", "none", "na", "n/a", "null",
+    "unknown", "notpresent", "not_present", "notfound", "not_found", "none", "na", "n/a", "null",
     "placeholder", "test", "admin", "founder", "hiring", "team", "user",
     "sample", "example", "noreply", "contact", "info", "hello", "support",
 }
