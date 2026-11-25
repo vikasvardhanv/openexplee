@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional, List
+from urllib.parse import urlparse
 from app.database import get_db_connection
 from app.engine.discovery import discover_leads_for_icp
 from app.engine.verifier import verify_email_smtp
@@ -38,6 +39,8 @@ async def launch_autopilot(req: AutopilotRequest, background_tasks: BackgroundTa
     analysis = await analyze_my_product(req.url)
     value_prop = analysis.get("value_proposition") or f"Solutions by {req.url}"
     product_name = analysis.get("product_name", req.url)
+    host = (urlparse(req.url).netloc or "").replace("www.", "").strip()
+    workspace = "FindMyFuture" if "findmyfuture" in host.lower() else ("Viktron.ai" if "viktron" in host.lower() else (host or product_name.split("|")[0].strip()[:40] or "Default"))
     icps = (analysis.get("target_icps") or [])[: max(1, min(req.max_campaigns, 6))]
 
     created = []
@@ -48,10 +51,10 @@ async def launch_autopilot(req: AutopilotRequest, background_tasks: BackgroundTa
             icp_query = icp.get("icp_query") or value_prop
             cursor = await conn.execute(
                 """
-                INSERT INTO campaigns (name, icp_prompt, target_industry, value_proposition, status)
-                VALUES (?, ?, ?, ?, 'discovering')
+                INSERT INTO campaigns (name, icp_prompt, target_industry, value_proposition, workspace, status)
+                VALUES (?, ?, ?, ?, ?, 'discovering')
                 """,
-                (camp_name, icp_query, product_name[:80], value_prop),
+                (camp_name, icp_query, product_name[:80], value_prop, workspace),
             )
             cid = cursor.lastrowid
             created.append({"id": cid, "name": camp_name, "icp_query": icp_query})
@@ -82,6 +85,7 @@ class CampaignCreate(BaseModel):
     icp_prompt: str
     target_industry: Optional[str] = "B2B SaaS"
     value_proposition: str
+    workspace: Optional[str] = "Viktron.ai"
     auto_send: bool = False
 
 
@@ -238,9 +242,9 @@ async def list_campaigns():
 async def create_campaign(req: CampaignCreate, background_tasks: BackgroundTasks):
     conn = await get_db_connection()
     cursor = await conn.execute("""
-        INSERT INTO campaigns (name, icp_prompt, target_industry, value_proposition, status)
-        VALUES (?, ?, ?, ?, 'draft')
-    """, (req.name, req.icp_prompt, req.target_industry, req.value_proposition))
+        INSERT INTO campaigns (name, icp_prompt, target_industry, value_proposition, workspace, status)
+        VALUES (?, ?, ?, ?, ?, 'draft')
+    """, (req.name, req.icp_prompt, req.target_industry, req.value_proposition, req.workspace or "Viktron.ai"))
     campaign_id = cursor.lastrowid
     await conn.commit()
     await conn.close()

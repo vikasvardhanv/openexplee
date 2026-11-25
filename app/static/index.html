@@ -131,10 +131,10 @@
             engine.</p>
         </div>
         <div class="flex gap-3">
-          <button onclick="switchTab('campaigns')"
+          <button onclick="switchTab('campaigns'); setTimeout(() => document.getElementById('analyze-website-input')?.focus(), 100);"
             class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition flex items-center space-x-2 shadow-lg shadow-indigo-600/20">
             <i data-lucide="plus-circle" class="w-4 h-4"></i>
-            <span>New ICP Discovery</span>
+            <span>Onboard Company / New ICP</span>
           </button>
         </div>
       </div>
@@ -970,6 +970,13 @@
     let currentDecisionIndex = 0;
 
     function switchWorkspace(ws) {
+      if (ws === '__new__') {
+        const sel = document.getElementById('global-workspace-select');
+        if (sel) sel.value = currentWorkspace;
+        switchTab('campaigns');
+        setTimeout(() => document.getElementById('analyze-website-input')?.focus(), 100);
+        return;
+      }
       currentWorkspace = ws;
       localStorage.setItem('openexplee_workspace', ws);
       const sel = document.getElementById('global-workspace-select');
@@ -977,6 +984,25 @@
       loadDashboard();
       if (typeof loadMailbox === 'function') loadMailbox();
       showToast(`Switched workspace to ${ws === 'all' ? 'All Workspaces' : ws}`);
+    }
+
+    function syncWorkspaceDropdown(camps) {
+      const sel = document.getElementById('global-workspace-select');
+      if (!sel) return;
+      const found = new Set(['Viktron.ai', 'FindMyFuture']);
+      camps.forEach(c => {
+        if ((c.name || '').toLowerCase().includes('findmyfuture')) found.add('FindMyFuture');
+        else if (c.workspace && c.workspace.trim()) found.add(c.workspace.trim());
+      });
+      const opts = [`<option value="all">🏢 All Workspaces</option>`];
+      found.forEach(w => {
+        const icon = w === 'FindMyFuture' ? '🎓' : (w === 'Viktron.ai' ? '⚡' : '🏢');
+        opts.push(`<option value="${w}">${icon} ${w}</option>`);
+      });
+      opts.push(`<option value="__new__">➕ Onboard New Company...</option>`);
+      sel.innerHTML = opts.join('');
+      if (![...found, 'all'].includes(currentWorkspace)) currentWorkspace = 'all';
+      sel.value = currentWorkspace;
     }
 
     async function loadDecisions() {
@@ -1094,13 +1120,16 @@
 
         const campRes = await fetch('/api/campaigns');
         let camps = await campRes.json();
+        syncWorkspaceDropdown(camps);
         const tbody = document.getElementById('dashboard-campaigns-body');
         
         if (currentWorkspace !== 'all') {
           if (currentWorkspace.toLowerCase() === 'findmyfuture') {
             camps = camps.filter(c => (c.name || '').toLowerCase().includes('findmyfuture') || (c.workspace || '').toLowerCase() === 'findmyfuture');
+          } else if (currentWorkspace.toLowerCase() === 'viktron.ai') {
+            camps = camps.filter(c => !(c.name || '').toLowerCase().includes('findmyfuture') && (!c.workspace || c.workspace.toLowerCase() === 'viktron.ai'));
           } else {
-            camps = camps.filter(c => !(c.name || '').toLowerCase().includes('findmyfuture'));
+            camps = camps.filter(c => (c.workspace || '').toLowerCase() === currentWorkspace.toLowerCase());
           }
         }
 
@@ -1124,11 +1153,6 @@
             <td class="py-3 px-4 text-right">${renderActionButton(c, true)}</td>
           </tr>
         `).join('');
-        lucide.createIcons();
-      } catch (err) {
-        console.error(err);
-      }
-    }
         lucide.createIcons();
       } catch (err) {
         console.error(err);
