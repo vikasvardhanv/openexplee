@@ -23,7 +23,8 @@ class Settings(BaseSettings):
     groq_api_key: Optional[str] = None
     ollama_base_url: str = "http://localhost:11434"
     thor_ollama_url: str = "http://100.114.48.60:11434"
-    thor_ollama_model: str = "llama3.2:3b"
+    # Scored 40/43 against Claude Opus on logged people-extraction calls (2026-11-26); llama3.2:3b scored 32/43.
+    thor_ollama_model: str = "qwen3.8:27b-q4_K_M"
     thor_cdp_url: str = "http://100.114.48.60:9222"
 
     # Obscura Rust Headless Browser Settings (Anti-bot stealth & lightweight CDP)
