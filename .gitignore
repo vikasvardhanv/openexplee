@@ -33,3 +33,7 @@ node_modules/
 server.log
 bin/
 *.tar.gz
+
+# Encrypted secrets stay on this machine. The remote is public.
+*.sops.env
+.sops.*.env
