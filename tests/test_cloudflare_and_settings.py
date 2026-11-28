@@ -9,7 +9,7 @@ from app.api.mcp import MCP_TOOLS
 from app.config import settings
 from app.engine.sequencer import send_single_email
 from app.engine.verifier import enrich_person_email
-from app.engine.scheduler import reset_daily_inbox_quotas, process_due_followups
+from app.engine.scheduler import reset_daily_inbox_quotas, process_due_followups, send_first_emails
 from app.engine.llm import _extract_json_blob
 from app.engine.copywriter import generate_cold_email
 
@@ -137,7 +137,7 @@ async def run_checks():
     for n, key in enumerate(["full"] * 5 + ["free"]):
         await conn.execute(
             "INSERT INTO leads (campaign_id, email, status, verification_status, followup_step, next_followup_at) "
-            "VALUES (?, ?, 'sent', 'deliverable', 1, '2000-01-01 00:00:00')", (ids[key][1], f"lead{n}@{key}.test"))
+            "VALUES (?, ?, 'sent', 'verified', 1, '2000-01-01 00:00:00')", (ids[key][1], f"lead{n}@{key}.test"))
     await conn.commit()
     await conn.close()
     try:
@@ -151,6 +151,31 @@ async def run_checks():
             await conn.execute("DELETE FROM leads WHERE campaign_id = ?", (campaign_id,))
             await conn.execute("DELETE FROM campaigns WHERE id = ?", (campaign_id,))
             await conn.execute("DELETE FROM inboxes WHERE id = ?", (inbox_id,))
+        await conn.commit()
+        await conn.close()
+
+    # 11. First emails go out by themselves only when the postal address and IMAP login are set,
+    # and never for a campaign named "(drafts)".
+    conn = await get_db_connection()
+    check_ids = []
+    for name in ("auto-check", "auto-check (drafts)"):
+        cur = await conn.execute("INSERT INTO campaigns (name, icp_prompt, status) VALUES (?, 'x', 'ready')", (name,))
+        check_ids.append(cur.lastrowid)
+    await conn.commit()
+    await conn.close()
+    saved = (settings.postal_address, settings.imap_host, settings.imap_user, settings.imap_password)
+    try:
+        with patch("app.engine.scheduler.dispatch_campaign_batch", new=AsyncMock(return_value={"dispatched": 1})) as batch:
+            settings.postal_address = ""
+            assert await send_first_emails() == 0 and not batch.await_count
+            settings.postal_address, settings.imap_host, settings.imap_user, settings.imap_password = "1 Test St", "h", "u", "p"
+            assert await send_first_emails() >= 1
+            called = [c.args[0] for c in batch.await_args_list]
+            assert check_ids[0] in called and check_ids[1] not in called
+    finally:
+        settings.postal_address, settings.imap_host, settings.imap_user, settings.imap_password = saved
+        conn = await get_db_connection()
+        await conn.execute("DELETE FROM campaigns WHERE name LIKE 'auto-check%'")
         await conn.commit()
         await conn.close()
 

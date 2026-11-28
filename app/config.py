@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pathlib import Path
 from typing import Optional
 
@@ -49,10 +49,12 @@ class Settings(BaseSettings):
     postal_address: str = ""
 
     # Reply handling: read replies over IMAP from the mailbox that Reply-To points at
-    imap_host: str = ""
+    # The reply mailbox has one login for SMTP and IMAP on one host (mail.privateemail.com),
+    # so the SMTP_* names in .sops.env also fill these fields. An IMAP_* name has priority.
+    imap_host: str = Field(default="", validation_alias=AliasChoices("imap_host", "smtp_host"))
     imap_port: int = 993
-    imap_user: str = ""
-    imap_password: str = ""
+    imap_user: str = Field(default="", validation_alias=AliasChoices("imap_user", "smtp_user"))
+    imap_password: str = Field(default="", validation_alias=AliasChoices("imap_password", "smtp_pass"))
     auto_reply_enabled: bool = True
     max_auto_replies_per_lead: int = 2
     inbound_webhook_token: str = ""
