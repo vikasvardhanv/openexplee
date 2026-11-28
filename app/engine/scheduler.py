@@ -4,6 +4,9 @@ from app.config import settings
 from app.database import get_db_connection
 from app.engine.sequencer import dispatch_campaign_batch, get_next_available_inbox, send_single_email
 from app.engine.replies import booking_link, poll_replies, sync_relay_bounces
+from app.engine.copywriter import generate_cold_email
+from app.engine.sellbird_link import run_sync
+from app.engine.verifier import verify_email_smtp
 
 
 async def reset_daily_inbox_quotas() -> int:
@@ -113,6 +116,55 @@ async def send_first_emails() -> int:
     return sent
 
 
+async def prepare_pending_leads(limit: int = 3) -> int:
+    """Asks the mail server about leads whose mailbox nobody checked, and writes the email
+    for confirmed leads that have none. Without this, such leads wait for ever."""
+    conn = await get_db_connection()
+    try:
+        cur = await conn.execute("""
+            SELECT l.*, c.value_proposition, c.booking_url AS campaign_booking_url FROM leads l
+            JOIN campaigns c ON c.id = l.campaign_id
+            WHERE l.status IN ('enriched', 'queued', 'discovered')
+              AND l.email IS NOT NULL AND l.email != ''
+              AND (l.verification_status = 'unverified'
+                   OR (l.verification_status = 'risky' AND l.verification_reason LIKE '%not checked%')
+                   OR (l.verification_status IN ('verified', 'catch_all')
+                       AND TRIM(COALESCE(l.personalized_body, '')) = ''))
+            LIMIT ?
+        """, (limit,))
+        leads = [dict(r) for r in await cur.fetchall()]
+    finally:
+        await conn.close()
+
+    for lead in leads:
+        status, reason = lead["verification_status"], lead["verification_reason"]
+        if status not in ("verified", "catch_all"):
+            checked = await verify_email_smtp(lead["email"])
+            status, reason = checked["status"], checked["details"]
+        subject, body = lead.get("personalized_subject"), lead.get("personalized_body")
+        if status in ("verified", "catch_all") and not (body or "").strip():
+            draft = await generate_cold_email(
+                company_name=lead.get("company_name") or lead.get("company_domain") or "",
+                company_domain=lead.get("company_domain") or "",
+                contact_name=lead.get("contact_name") or "",
+                job_title=lead.get("job_title") or "",
+                company_summary="",
+                value_proposition=lead.get("value_proposition") or "",
+                booking_url=lead.get("campaign_booking_url"),
+            )
+            subject, body = draft["subject"], draft["body"]
+        conn = await get_db_connection()
+        try:
+            await conn.execute(
+                "UPDATE leads SET verification_status = ?, verification_reason = ?, "
+                "personalized_subject = ?, personalized_body = ? WHERE id = ?",
+                (status, reason, subject, body, lead["id"]))
+            await conn.commit()
+        finally:
+            await conn.close()
+    return len(leads)
+
+
 async def run_scheduler_loop(interval_seconds: int = 300) -> None:
     """Background loop for daily quota resets and automated follow-up sequences."""
     while True:
@@ -124,6 +176,12 @@ async def run_scheduler_loop(interval_seconds: int = 300) -> None:
                 await sync_relay_bounces()
             except Exception as exc:
                 print(f"[Scheduler] Relay bounce check failed: {exc}")
+            # Sellbird link and lead preparation send nothing, so a failure here only waits a tick.
+            try:
+                await asyncio.to_thread(run_sync, settings.sellbird_campaign_id or None, True)
+                await prepare_pending_leads()
+            except Exception as exc:
+                print(f"[Scheduler] Sellbird sync or lead preparation failed: {exc!r}")
             # Replies next: someone who answered or opted out must not get a follow-up.
             try:
                 await poll_replies()

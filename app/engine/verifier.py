@@ -1,9 +1,12 @@
 import asyncio
+import json
 import re
+import shlex
 import dns.resolver
 from email_validator import validate_email, EmailNotValidError
 from typing import Dict, Any, List, Optional
 import aiosmtplib
+from app.database import get_db_connection
 
 DISPOSABLE_DOMAINS = {
     "mailinator.com", "guerrillamail.com", "tempmail.com", "10minutemail.com",
@@ -163,12 +166,81 @@ async def verify_email_smtp(email: str, timeout: float = 2.0) -> Dict[str, Any]:
             pass
 
     except Exception as e:
-        # Port 25 blocked or timed out: the domain takes mail, but nobody asked about this mailbox.
-        result["status"] = "risky"
-        result["score"] = 40
-        result["details"] = f"Domain has mail servers ({primary_mx}). Mailbox not checked ({type(e).__name__})."
+        # Home and office networks block port 25, and slow mail servers miss the short timeout.
+        # The relay server can reach them, so the relay asks about this mailbox.
+        relayed = await _check_from_relay(email, primary_mx)
+        if relayed:
+            result.update(relayed)
+        else:
+            result["status"] = "risky"
+            result["score"] = 40
+            result["details"] = f"Domain has mail servers ({primary_mx}). Mailbox not checked ({type(e).__name__})."
 
     return result
+
+
+# Runs on the relay. Reads one JSON line [mx, sender, email] and prints the SMTP answer codes.
+_RELAY_PROBE = r'''
+import json, smtplib, sys
+mx, sender, email = json.loads(sys.stdin.readline())
+try:
+    s = smtplib.SMTP(mx, 25, timeout=25)
+    s.ehlo()
+    m = s.mail(sender)[0]
+    r = s.rcpt(email)[0] if m < 400 else 0
+    c = s.rcpt("check_catchall_987654@" + email.split("@")[1])[0] if r == 250 else 0
+    try:
+        s.quit()
+    except Exception:
+        pass
+    print(json.dumps({"mail": m, "rcpt": r, "catchall": c}))
+except Exception as e:
+    print(json.dumps({"error": type(e).__name__}))
+'''
+
+
+def grade_relay_answer(answer: Dict[str, Any]) -> Dict[str, Any]:
+    """Turns the relay's SMTP answer codes into a verification status."""
+    rcpt = answer.get("rcpt", 0)
+    if rcpt == 250 and answer.get("catchall") == 250:
+        return {"status": "catch_all", "score": 70,
+                "details": "Domain accepts every address, so this mailbox is not confirmed (asked from the relay)."}
+    if rcpt == 250:
+        return {"status": "verified", "score": 99,
+                "details": "Mailbox confirmed by its mail server (asked from the relay)."}
+    if rcpt in (550, 551, 552, 553, 554):
+        return {"status": "invalid", "score": 0,
+                "details": f"Mailbox rejected by its mail server (code {rcpt}, asked from the relay)."}
+    why = answer.get("error") or f"sender code {answer.get('mail')}, mailbox code {rcpt}"
+    # This text must not contain "not checked": the scheduler retries leads that carry those words.
+    return {"status": "risky", "score": 40, "details": f"Mailbox check failed from the relay ({why})."}
+
+
+async def _check_from_relay(email: str, mx_host: str) -> Optional[Dict[str, Any]]:
+    """Asks the mail server about one mailbox from the relay, over SSH. None if there is no relay."""
+    try:
+        conn = await get_db_connection()
+        try:
+            cur = await conn.execute(
+                # A paused inbox still names the relay. Asking about a mailbox sends no email.
+                "SELECT smtp_host, email FROM inboxes WHERE provider = 'relay' ORDER BY id LIMIT 1")
+            relay = await cur.fetchone()
+        finally:
+            await conn.close()
+        if not relay:
+            return None
+        # The address travels on stdin as JSON, never in the remote command line.
+        proc = await asyncio.create_subprocess_exec(
+            "ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", f"root@{relay['smtp_host']}",
+            "python3 -c " + shlex.quote(_RELAY_PROBE),
+            stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
+        )
+        out, _ = await asyncio.wait_for(
+            proc.communicate(json.dumps([mx_host, relay["email"], email]).encode() + b"\n"), timeout=60)
+        return grade_relay_answer(json.loads(out))
+    except Exception as exc:
+        print(f"[Verifier] Relay check did not run for {email.split('@')[-1]}: {exc!r}")
+        return None
 
 
 async def enrich_person_email(first_name: str, last_name: str, domain: str) -> Dict[str, Any]:

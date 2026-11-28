@@ -44,6 +44,12 @@ class Settings(BaseSettings):
     max_daily_sends_per_inbox: int = 35
     min_delay_seconds: int = 120
     max_delay_seconds: int = 300
+    # First emails stop when more than this share of the last 14 days of sends bounced.
+    max_bounce_rate: float = 0.05
+    # Sellbird finds prospects; this app sends. The do-not-email lists sync on every tick.
+    # Prospects are imported only when a campaign id is set here.
+    sellbird_db_path: str = "~/IdeaProjects/harvey/data/sellbird.db"
+    sellbird_campaign_id: int = 0
     # Compliance footer, added under every cold email and follow-up (CAN-SPAM)
     opt_out_line: str = 'Not interested? Reply "no thanks" and I won\'t email again.'
     postal_address: str = ""
