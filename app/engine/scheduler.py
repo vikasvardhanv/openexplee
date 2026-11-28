@@ -4,7 +4,7 @@ from app.config import settings
 from app.database import get_db_connection
 from app.engine.sequencer import dispatch_campaign_batch, get_next_available_inbox, send_single_email
 from app.engine.replies import booking_link, poll_replies, sync_relay_bounces
-from app.engine.copywriter import generate_cold_email
+from app.engine.copywriter import generate_cold_email, greeting_name
 from app.engine.sellbird_link import run_sync
 from app.engine.verifier import verify_email_smtp
 
@@ -57,14 +57,15 @@ async def process_due_followups(limit: int = 10) -> int:
 
         orig_subj = lead.get("personalized_subject") or f"quick question for {lead.get('company_name', 'you')}"
         subj = orig_subj if orig_subj.lower().startswith("re:") else f"Re: {orig_subj}"
-        first_name = (lead.get("contact_name") or "there").split()[0]
+        first_name = greeting_name(lead.get("contact_name"))
 
         if lead.get("followup_step") == 1:
             link = booking_link(lead)
             cal_line = f"\n\nHappy to jump on a quick 15-min call — pick any slot here: {link}" if link else "\n\nOpen to a quick 5-minute chat this week?"
             body = (
-                f"{{Hi|Hey}} {first_name},\n\n"
-                f"Just bumping this to the top of your inbox in case it got buried.{cal_line}"
+                f"Hi {first_name},\n\n"
+                f"I am sending this once more in case my first note went to the wrong person. "
+                f"If someone else handles this, tell me and I will write to them.{cal_line}"
             )
         else:
             body = (

@@ -1,3 +1,4 @@
+from app.engine.copywriter import greeting_name
 import asyncio
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
@@ -55,7 +56,7 @@ async def get_pending_decisions():
             d = dict(r)
             booking_url = booking_link(d)
             slot_line = f"Easiest is to grab a 15-minute slot here:\n{booking_url}\n\n" if booking_url else ""
-            first_name = d.get("first_name") or (d.get("contact_name", "").split()[0] if d.get("contact_name") else "there")
+            first_name = greeting_name(d.get("first_name") or d.get("contact_name"))
             days_quiet = max(1, d.get("days_quiet") or 1)
 
             # Get latest prospect reply if available
@@ -76,7 +77,8 @@ async def get_pending_decisions():
             else:
                 suggested_reply = (
                     f"Hi {first_name},\n\n"
-                    f"Following up on my earlier note.\n\n{slot_line}"
+                    f"I am sending this once more in case my first note went to the wrong person. "
+                    f"If someone else handles this, tell me and I will write to them.\n\n{slot_line}"
                     "Best,\n"
                     "Vikash"
                 )
@@ -253,7 +255,7 @@ async def get_thread_detail(lead_id: int):
         booking_url = settings.booking_url or "https://cal.viktron.ai/vikash/15min"
 
         # Generate intelligent contextual nudge copy (Explee-style "Nudge Tyler?")
-        first_name = lead.get("first_name") or (lead.get("contact_name", "").split()[0] if lead.get("contact_name") else "there")
+        first_name = greeting_name(lead.get("first_name") or lead.get("contact_name"))
         suggested_nudge = (
             f"Hi {first_name},\n\n"
             f"Sounds good. Easiest is to grab a quick 15-minute slot that suits you here:\n"
