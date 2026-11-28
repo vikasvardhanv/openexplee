@@ -150,3 +150,4 @@ class ScraperCLIConnector:
     async def scrape(url: str, max_depth: int = 1) -> Dict[str, Any]:
         from app.engine.scraper import scrape_company_website
         return await scrape_company_website(url=url, max_depth=max_depth)
+

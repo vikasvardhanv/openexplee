@@ -132,6 +132,7 @@ async def init_db():
             ("campaigns", "inbox_id", "INTEGER"),
             ("campaigns", "booking_url", "TEXT"),
             ("campaigns", "hot_leads_count", "INTEGER DEFAULT 0"),
+            ("campaigns", "workspace", "TEXT DEFAULT 'Viktron.ai'"),
             ("leads", "is_hot_lead", "BOOLEAN DEFAULT 0"),
             ("leads", "followup_step", "INTEGER DEFAULT 0"),
             ("leads", "next_followup_at", "TIMESTAMP"),

@@ -8,7 +8,7 @@ from typing import List, Dict, Any, Optional, Set
 from app.config import settings
 from app.database import get_db_connection
 from app.engine.scraper import scrape_company_website
-from app.engine.verifier import enrich_person_email
+from app.engine.verifier import enrich_person_email, verify_email_smtp, is_valid_person_name
 
 DUCKDUCKGO_LITE_URL = "https://html.duckduckgo.com/html/"
 

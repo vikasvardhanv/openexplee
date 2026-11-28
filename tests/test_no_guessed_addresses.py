@@ -30,11 +30,11 @@ async def run_checks():
     jane = [{"first_name": "Jane", "last_name": "Doe", "job_title": "CTO"}]
 
     # 1. A name pattern the mail server did not confirm is not sendable.
-    for unconfirmed in ("risky", "deliverable"):
+    for unconfirmed in ("risky", "catch_all"):
         with patch("app.engine.verifier.verify_email_smtp", new=_smtp(unconfirmed)):
-            assert (await enrich_person_email("Jane", "Doe", "acme.com"))["status"] == "invalid"
+            assert (await enrich_person_email("Maya", "Patel", "acme.com"))["status"] == "invalid"
     with patch("app.engine.verifier.verify_email_smtp", new=_smtp("verified")):
-        assert (await enrich_person_email("Jane", "Doe", "acme.com"))["status"] == "verified"
+        assert (await enrich_person_email("Maya", "Patel", "acme.com"))["status"] == "verified"
 
     # 2. No person and no published address: the lead is saved as not sendable.
     lead = await _discover([], [], "invalid")

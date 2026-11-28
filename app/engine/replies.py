@@ -261,19 +261,61 @@ def bounced_recipients(raw: bytes) -> List[str]:
     return failed
 
 
-async def handle_bounces(addresses: List[str]) -> Dict[str, Any]:
+def relay_bounced_addresses(log_text: str) -> List[str]:
+    """Recipients that the Postfix log of the relay reports as permanently refused."""
+    return sorted({
+        m.group(1).lower()
+        for line in log_text.splitlines() if "status=bounced" in line
+        for m in [re.search(r"\bto=<([^>]+)>", line)] if m
+    })
+
+
+async def sync_relay_bounces() -> int:
+    """Reads the mail log of the relay and records each new bounced address.
+    The bounce notice path needs a public webhook, and this app listens on the local machine only."""
+    conn = await get_db_connection()
+    try:
+        cur = await conn.execute(
+            "SELECT DISTINCT smtp_host FROM inboxes WHERE provider = 'relay'")
+        hosts = [r["smtp_host"] for r in await cur.fetchall() if r["smtp_host"]]
+        cur = await conn.execute("SELECT LOWER(value) AS value FROM suppression_list WHERE entry_type = 'email'")
+        known = {r["value"] for r in await cur.fetchall()}
+    finally:
+        await conn.close()
+
+    found: set = set()
+    for host in hosts:
+        # ponytail: SSH as root and the container name postfix-relay are fixed.
+        # Upgrade: a setting for each, when a second relay has a different layout.
+        proc = await asyncio.create_subprocess_exec(
+            "ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", f"root@{host}",
+            "docker logs --since 72h postfix-relay 2>&1 | grep status=bounced || true",
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
+        )
+        out, _ = await asyncio.wait_for(proc.communicate(), timeout=30)
+        if proc.returncode != 0:
+            raise RuntimeError(f"cannot read the relay log on {host} (ssh exit {proc.returncode})")
+        found.update(relay_bounced_addresses(out.decode("utf-8", "replace")))
+
+    new = sorted(found - known)
+    if new:
+        await handle_bounces(new, reason="hard_bounce: relay log")
+    return len(new)
+
+
+async def handle_bounces(addresses: List[str], reason: str = "hard_bounce: bounce notice") -> Dict[str, Any]:
     """Suppresses hard-bounced addresses and stops their follow-ups. The relay accepts every
     message, so a bad address is only known when the receiver's bounce notice arrives."""
     conn = await get_db_connection()
     try:
         for address in addresses:
-            await _suppress(conn, address, "hard_bounce: bounce notice")
+            await _suppress(conn, address, reason)
             await conn.execute(
                 "UPDATE leads SET status = 'bounced', next_followup_at = NULL WHERE LOWER(email) = ?", (address,))
         await conn.commit()
     finally:
         await conn.close()
-    print(f"[Replies] bounce notice: suppressed {len(addresses)} address(es)")
+    print(f"[Replies] {reason}: suppressed {len(addresses)} address(es)")
     return {"ok": True, "action": "bounce_suppressed", "count": len(addresses)}
 
 

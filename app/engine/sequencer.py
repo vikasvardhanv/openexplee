@@ -194,7 +194,10 @@ async def _send_via_smtp(
         use_tls=use_tls,
         start_tls=start_tls,
         tls_context=tls_context,
-        timeout=15.0
+        timeout=15.0,
+        # Greet as the sender domain. The default is this computer's name, which lands in the
+        # Received header of every email and reads as a home machine to spam filters.
+        local_hostname=inbox["email"].split("@")[-1],
     )
     await smtp_client.connect()
     if inbox.get("smtp_user") and inbox["smtp_user"] != "none" and inbox.get("smtp_password") and inbox["smtp_password"] != "none":
@@ -252,6 +255,11 @@ async def send_single_email(
     if await _is_suppressed(to_email):
         return {"success": False, "inbox_email": inbox["email"], "error": f"Suppressed recipient/domain: {to_email}"}
 
+    local_part = to_email.strip().lower().split("@")[0]
+    if any(bad in local_part for bad in ("notpresent", "notfound", "unknown.", "john.doe", "jane.doe", "noreply", "no-reply")):
+        await _auto_suppress_bounce(to_email, lead_id, "blocked_placeholder_email")
+        return {"success": False, "inbox_email": inbox["email"], "error": f"Blocked placeholder address: {to_email}"}
+
     clean_subject = resolve_spintax(subject)
     clean_body = resolve_spintax(body)
     footer = "" if is_reply else compliance_footer()
@@ -285,19 +293,43 @@ async def send_single_email(
     return result
 
 
+async def bounce_rate_too_high() -> Optional[str]:
+    """The reason first emails are on hold, or None. Looks at the last 14 days of sends."""
+    conn = await get_db_connection()
+    try:
+        cur = await conn.execute(
+            "SELECT COALESCE(SUM(status = 'bounced'), 0) AS bounced, COUNT(*) AS total "
+            "FROM leads WHERE sent_at >= datetime('now', '-14 days')")
+        row = await cur.fetchone()
+    finally:
+        await conn.close()
+    # ponytail: a fixed 20-send minimum and 14-day window. Upgrade: per-inbox rates.
+    if row["total"] >= 20 and row["bounced"] / row["total"] > settings.max_bounce_rate:
+        return (f"First emails are on hold: {row['bounced']} of the last {row['total']} sends bounced. "
+                f"The limit is {settings.max_bounce_rate:.0%}. Fix the lead list, or wait for old sends to age out.")
+    return None
+
+
 async def dispatch_campaign_batch(campaign_id: int, limit: int = 10) -> Dict[str, Any]:
     """
     Sends queued and verified leads for a given campaign using rotating inboxes.
     Blocks invalid emails automatically to protect sender domain reputation.
     """
+    held = await bounce_rate_too_high()
+    if held:
+        return {"dispatched": 0, "errors": [held]}
+
     conn = await get_db_connection()
     try:
+        # A lead with no written email waits. It never gets a placeholder.
         cur = await conn.execute("""
-            SELECT * FROM leads 
+            SELECT * FROM leads
             WHERE campaign_id = ?
               AND status IN ('enriched', 'queued', 'discovered')
-              AND verification_status != 'invalid'
+              AND verification_status IN ('verified', 'catch_all')
               AND email IS NOT NULL AND email != ''
+              AND TRIM(COALESCE(personalized_subject, '')) != ''
+              AND TRIM(COALESCE(personalized_body, '')) != ''
             LIMIT ?
         """, (campaign_id, limit))
         leads = [dict(r) for r in await cur.fetchall()]
@@ -336,14 +368,11 @@ async def dispatch_campaign_batch(campaign_id: int, limit: int = 10) -> Dict[str
             errors.append("No active inboxes available with remaining daily quota.")
             break
 
-        subj = lead.get("personalized_subject") or f"quick question for {lead.get('company_name', 'you')}"
-        body = lead.get("personalized_body") or f"Hi,\n\nSaw what you are building and wanted to connect."
-
         send_res = await send_single_email(
             inbox=inbox,
             to_email=lead["email"],
-            subject=subj,
-            body=body,
+            subject=lead["personalized_subject"],
+            body=lead["personalized_body"],
             lead_id=lead["id"]
         )
 

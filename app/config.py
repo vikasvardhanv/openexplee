@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pathlib import Path
 from typing import Optional
 
@@ -23,7 +23,8 @@ class Settings(BaseSettings):
     groq_api_key: Optional[str] = None
     ollama_base_url: str = "http://localhost:11434"
     thor_ollama_url: str = "http://100.114.48.60:11434"
-    thor_ollama_model: str = "llama3.2:3b"
+    # Scored 40/43 against Claude Opus on logged people-extraction calls (2026-11-26); llama3.2:3b scored 32/43.
+    thor_ollama_model: str = "qwen3.8:27b-q4_K_M"
     thor_cdp_url: str = "http://100.114.48.60:9222"
 
     # Obscura Rust Headless Browser Settings (Anti-bot stealth & lightweight CDP)
@@ -43,15 +44,23 @@ class Settings(BaseSettings):
     max_daily_sends_per_inbox: int = 35
     min_delay_seconds: int = 120
     max_delay_seconds: int = 300
+    # First emails stop when more than this share of the last 14 days of sends bounced.
+    max_bounce_rate: float = 0.05
+    # Sellbird finds prospects; this app sends. The do-not-email lists sync on every tick.
+    # Prospects are imported only when a campaign id is set here.
+    sellbird_db_path: str = "~/IdeaProjects/harvey/data/sellbird.db"
+    sellbird_campaign_id: int = 0
     # Compliance footer, added under every cold email and follow-up (CAN-SPAM)
     opt_out_line: str = 'Not interested? Reply "no thanks" and I won\'t email again.'
     postal_address: str = ""
 
     # Reply handling: read replies over IMAP from the mailbox that Reply-To points at
-    imap_host: str = ""
+    # The reply mailbox has one login for SMTP and IMAP on one host (mail.privateemail.com),
+    # so the SMTP_* names in .sops.env also fill these fields. An IMAP_* name has priority.
+    imap_host: str = Field(default="", validation_alias=AliasChoices("imap_host", "smtp_host"))
     imap_port: int = 993
-    imap_user: str = ""
-    imap_password: str = ""
+    imap_user: str = Field(default="", validation_alias=AliasChoices("imap_user", "smtp_user"))
+    imap_password: str = Field(default="", validation_alias=AliasChoices("imap_password", "smtp_pass"))
     auto_reply_enabled: bool = True
     max_auto_replies_per_lead: int = 2
     inbound_webhook_token: str = ""
