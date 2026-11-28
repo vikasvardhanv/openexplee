@@ -77,7 +77,7 @@ async def verify_email_smtp(email: str, timeout: float = 2.0) -> Dict[str, Any]:
     """
     result = {
         "email": email,
-        "status": "unverified",  # 'verified', 'deliverable', 'catch_all', 'invalid', 'risky'
+        "status": "unverified",  # 'verified', 'catch_all', 'invalid', 'risky'
         "score": 0,
         "mx_host": None,
         "is_disposable": False,
@@ -125,9 +125,10 @@ async def verify_email_smtp(email: str, timeout: float = 2.0) -> Dict[str, Any]:
         # Test Sender
         code, _ = await smtp_client.mail("check@verify.openexplee.local")
         if code >= 400:
-            result["status"] = "deliverable"
-            result["details"] = f"MX server active ({primary_mx}), handshake limited by greylisting."
-            result["score"] = 80
+            # The server refused the test sender, so it never answered for this mailbox.
+            result["status"] = "risky"
+            result["details"] = f"MX server active ({primary_mx}). Mailbox not checked (sender refused, code {code})."
+            result["score"] = 40
             await smtp_client.quit()
             return result
 
@@ -151,9 +152,10 @@ async def verify_email_smtp(email: str, timeout: float = 2.0) -> Dict[str, Any]:
             result["details"] = f"Mailbox rejected by server: {rcpt_msg}"
             result["score"] = 0
         else:
-            result["status"] = "deliverable"
-            result["details"] = f"MX answered with code {rcpt_code}"
-            result["score"] = 85
+            # A temporary or unknown answer confirms nothing about the mailbox.
+            result["status"] = "risky"
+            result["details"] = f"Mailbox not confirmed. MX answered with code {rcpt_code}."
+            result["score"] = 40
 
         try:
             await smtp_client.quit()
@@ -189,13 +191,14 @@ async def enrich_person_email(first_name: str, last_name: str, domain: str) -> D
 
     for candidate in candidates:
         res = await verify_email_smtp(candidate, timeout=5.0)
-        # Only a mailbox the mail server confirmed (or a catch-all domain) counts as found.
-        if res["status"] in ("verified", "catch_all"):
+        # Only a mailbox the mail server confirmed counts as found.
+        # A catch-all domain accepts every name pattern, so a pattern there is still a guess.
+        if res["status"] == "verified":
             return {**res, "candidates_tested": candidates}
         if res["mx_host"] is None:
             # Domain has no MX records at all; stop probing permutations
             return {**res, "candidates_tested": [candidate]}
-        if res["status"] == "risky":
+        if res["status"] in ("risky", "catch_all"):
             # The mail server could not be reached. The other patterns will fail the same way.
             break
 

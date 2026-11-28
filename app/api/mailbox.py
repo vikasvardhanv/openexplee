@@ -5,6 +5,7 @@ from typing import Optional, List, Dict, Any
 from app.database import get_db_connection
 from app.engine.sequencer import send_single_email
 from app.config import settings
+from app.engine.replies import booking_link
 
 router = APIRouter(prefix="/api/mailbox", tags=["mailbox"])
 
@@ -37,7 +38,7 @@ async def get_pending_decisions():
     try:
         # Find leads that replied OR went quiet for >= 3 days after an outreach send
         query = """
-            SELECT l.*, c.name as campaign_name, c.value_proposition,
+            SELECT l.*, c.name as campaign_name, c.value_proposition, c.booking_url,
                    CAST(ROUND(julianday('now') - julianday(COALESCE(l.sent_at, l.created_at))) AS INTEGER) as days_quiet
             FROM leads l
             JOIN campaigns c ON l.campaign_id = c.id
@@ -49,10 +50,11 @@ async def get_pending_decisions():
         cur = await conn.execute(query)
         rows = await cur.fetchall()
         decisions = []
-        booking_url = settings.booking_url or "https://cal.viktron.ai/vikash/15min"
 
         for r in rows:
             d = dict(r)
+            booking_url = booking_link(d)
+            slot_line = f"Easiest is to grab a 15-minute slot here:\n{booking_url}\n\n" if booking_url else ""
             first_name = d.get("first_name") or (d.get("contact_name", "").split()[0] if d.get("contact_name") else "there")
             days_quiet = max(1, d.get("days_quiet") or 1)
 
@@ -62,21 +64,19 @@ async def get_pending_decisions():
                 (d["id"],)
             )
             inbound_msg = await cur_msg.fetchone()
-            prospect_quote = dict(inbound_msg)["body"] if inbound_msg else (d.get("reply_intent") or "How about a quick chat?")
+            prospect_quote = dict(inbound_msg)["body"] if inbound_msg else ""
 
             if d.get("is_hot_lead") or d.get("status") == "replied":
                 suggested_reply = (
                     f"Hi {first_name},\n\n"
-                    f"Sounds good. Easiest is to grab a quick 15-minute slot that suits you here:\n"
-                    f"{booking_url}\n\n"
+                    f"Thanks for the reply.\n\n{slot_line}"
                     "Best,\n"
                     "Vikash"
                 )
             else:
                 suggested_reply = (
                     f"Hi {first_name},\n\n"
-                    f"One quick thought before our call: we can show you a live sandbox test for {d.get('company_name') or 'your team'} in 10 minutes.\n\n"
-                    f"Feel free to grab a slot here: {booking_url}\n\n"
+                    f"Following up on my earlier note.\n\n{slot_line}"
                     "Best,\n"
                     "Vikash"
                 )
@@ -89,7 +89,7 @@ async def get_pending_decisions():
                 "job_title": d.get("job_title") or "Executive",
                 "campaign_name": d.get("campaign_name"),
                 "days_quiet": days_quiet,
-                "is_reply": bool(inbound_msg or d.get("is_hot_lead")),
+                "is_reply": bool(inbound_msg),
                 "prospect_quote": prospect_quote,
                 "suggested_reply": suggested_reply,
             })
@@ -106,7 +106,9 @@ async def act_on_decision(req: DecisionActionRequest):
     """
     conn = await get_db_connection()
     try:
-        cur = await conn.execute("SELECT * FROM leads WHERE id = ?", (req.lead_id,))
+        cur = await conn.execute(
+            "SELECT l.*, c.booking_url FROM leads l LEFT JOIN campaigns c ON c.id = l.campaign_id WHERE l.id = ?",
+            (req.lead_id,))
         row = await cur.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Lead not found")
@@ -123,8 +125,8 @@ async def act_on_decision(req: DecisionActionRequest):
 
             body = req.custom_reply or (
                 f"Hi {lead.get('first_name') or 'there'},\n\n"
-                f"Following up on my previous note. Easiest is to grab 15 minutes here:\n"
-                f"{settings.booking_url or 'https://cal.viktron.ai/vikash/15min'}\n\n"
+                f"Following up on my previous note.\n\n"
+                + (f"Easiest is to grab 15 minutes here:\n{booking_link(lead)}\n\n" if booking_link(lead) else "") +
                 "Best,\nVikash"
             )
             subject = f"Re: {lead.get('personalized_subject') or 'quick question'}"

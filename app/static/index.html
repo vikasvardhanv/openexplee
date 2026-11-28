@@ -1094,7 +1094,7 @@
       document.getElementById('decision-modal-email').innerText = d.email;
       document.getElementById('decision-modal-company').innerText = d.company_name;
       document.getElementById('decision-modal-quiet').innerHTML = `<i data-lucide="clock" class="w-3 h-3"></i> ${d.is_reply ? 'Replied' : 'Quiet for ' + d.days_quiet + ' days'}`;
-      document.getElementById('decision-modal-quote').innerText = `"${d.prospect_quote}"`;
+      document.getElementById('decision-modal-quote').innerText = d.prospect_quote ? `"${d.prospect_quote}"` : 'No reply yet';
       document.getElementById('decision-modal-reply-text').value = d.suggested_reply;
 
       const pct = Math.round(((currentDecisionIndex + 1) / pendingDecisions.length) * 100);

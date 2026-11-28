@@ -57,6 +57,8 @@ Instructions:
 4. Sentence 2: Specific pain point related to our value proposition.
 5. Sentence 3: Low-friction call to action {cta_rule}.
 6. Sign off as {sender_name}. No cheesy buzzwords ("revolutionary", "synergy").
+7. Layout: a greeting line ("Hi {contact_first},"), then short paragraphs with a blank line (\\n\\n) between them, then the sign-off name on its own line. Never one block of text.
+8. The website summary can hold page noise: cookie banners, browser warnings, error pages, login prompts. Never mention those. If the summary says nothing real about the company, write one plain sentence about what the company does from its name and domain.
 
 Respond strictly in valid JSON with two fields:
 {{"subject": "...", "body": "..."}}

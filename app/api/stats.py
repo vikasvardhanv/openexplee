@@ -17,7 +17,7 @@ async def get_dashboard_stats():
     total_leads = (await cur.fetchone())[0]
 
     # Verified leads
-    cur = await conn.execute("SELECT COUNT(*) FROM leads WHERE verification_status IN ('verified', 'deliverable')")
+    cur = await conn.execute("SELECT COUNT(*) FROM leads WHERE verification_status IN ('verified', 'catch_all')")
     verified_leads = (await cur.fetchone())[0]
 
     # Emails sent

@@ -194,7 +194,10 @@ async def _send_via_smtp(
         use_tls=use_tls,
         start_tls=start_tls,
         tls_context=tls_context,
-        timeout=15.0
+        timeout=15.0,
+        # Greet as the sender domain. The default is this computer's name, which lands in the
+        # Received header of every email and reads as a home machine to spam filters.
+        local_hostname=inbox["email"].split("@")[-1],
     )
     await smtp_client.connect()
     if inbox.get("smtp_user") and inbox["smtp_user"] != "none" and inbox.get("smtp_password") and inbox["smtp_password"] != "none":
@@ -301,7 +304,7 @@ async def dispatch_campaign_batch(campaign_id: int, limit: int = 10) -> Dict[str
             SELECT * FROM leads 
             WHERE campaign_id = ?
               AND status IN ('enriched', 'queued', 'discovered')
-              AND verification_status IN ('verified', 'deliverable', 'catch_all')
+              AND verification_status IN ('verified', 'catch_all')
               AND email IS NOT NULL AND email != ''
             LIMIT ?
         """, (campaign_id, limit))
